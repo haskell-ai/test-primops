@@ -19,11 +19,11 @@ data Expr (width :: Width) where
     EShl     :: Expr width -> Expr W8 -> Expr width
     EShr     :: Expr width -> Expr W8 -> Expr width
     ENegate  :: Expr width -> Expr width
-    ENarrow  :: (KnownWidth wide)
+    ENarrow  :: (KnownWidth wide, wide `WiderThan` narrow)
              => Expr wide -> Expr narrow
-    ESignExt :: (KnownWidth narrow)
+    ESignExt :: (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
-    EZeroExt :: (KnownWidth narrow)
+    EZeroExt :: (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
     ELoad    :: Expr W64 -> Expr width
     ELit     :: Number width -> Expr width
@@ -112,18 +112,12 @@ genExpr' width = sized gen
             , EShr <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
-            , do SomeExpr e <- arbitrary 
-                 return $ ENarrow e
-            --, do SomeExpr e <- arbitrary 
-            --     return $ ESignExt e
             , do off <- chooseInteger (0, bufferSize-1)
                  return $ ELoad $ ELit $ mkNumber off
             ]
-            ++ if w == W8 then [] else
-               [ EZeroExt <$> genExpr @W16
-               , EZeroExt <$> genExpr @W32
-               , EZeroExt <$> genExpr @W64
-               ]
+            ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
+            -- ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
+            ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
 
     smallLit = ELit <$> chooseNumber (0, 96)
     w = knownWidth @width

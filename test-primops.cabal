@@ -17,6 +17,7 @@ executable test-primops
     ghc-options:      -Wall -Wno-unticked-promoted-constructors
     default-extensions:
         ViewPatterns
+        TypeOperators
         GADTs
         TypeInType
         DataKinds
