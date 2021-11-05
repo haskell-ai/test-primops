@@ -29,6 +29,14 @@ data Expr (width :: Width) where
     ELoad    :: Expr W64 -> Expr width
     ELit     :: Number width -> Expr width
 
+instance KnownWidth width => Num (Expr width) where
+    (+) = EAdd
+    (-) = ESub
+    (*) = EMul
+    negate = ENegate
+    abs = id
+    fromInteger = ELit . fromInteger
+
 l8 :: Integer -> Expr W8
 l8 = ELit . n8
 
