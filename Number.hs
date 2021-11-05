@@ -59,7 +59,7 @@ instance (KnownWidth width) => Bounded (Number width) where
     maxBound = Number ((1 `shiftL` widthBits (knownWidth @width)) - 1)
 
 instance (KnownWidth width) => Arbitrary (Number width) where
-    arbitrary = Number <$> chooseInteger (a,b)
+    arbitrary = mkNumber <$> chooseInteger (a,b)
       where
         Number a = minBound @(Number width)
         Number b = maxBound @(Number width)
@@ -73,7 +73,7 @@ instance (KnownWidth width) => Num (Number width) where
     (*) = liftBinOp (*)
     signum _ = 1
     abs = id
-    fromInteger = Number
+    fromInteger = mkNumber
 
 instance (KnownWidth width) => Bits (Number width) where
     (.&.) = liftBinOp (.&.)
@@ -111,9 +111,9 @@ truncateNumber :: forall wide narrow. (KnownWidth narrow)
 truncateNumber (Number n) = mkNumber n
 
 signExtNumber :: forall wide narrow. (KnownWidth narrow)
-              => Number wide -> Number narrow
-signExtNumber (Number n) = undefined
+              => Number narrow -> Number wide
+signExtNumber (Number _) = undefined
 
-zeroExtNumber :: forall wide narrow. (KnownWidth narrow)
-              => Number wide -> Number narrow
-zeroExtNumber (Number n) = Number n
+zeroExtNumber :: forall wide narrow. (KnownWidth wide)
+              => Number narrow -> Number wide
+zeroExtNumber (Number n) = mkNumber n

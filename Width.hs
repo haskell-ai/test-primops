@@ -20,7 +20,7 @@ widthBits W64 = 64
 class KnownWidth (w :: Width) where
     knownWidth :: Width
 
-instance KnownWidth W8 where knownWidth = W8
+instance KnownWidth W8  where knownWidth = W8
 instance KnownWidth W16 where knownWidth = W16
 instance KnownWidth W32 where knownWidth = W32
 instance KnownWidth W64 where knownWidth = W64
