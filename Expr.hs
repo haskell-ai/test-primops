@@ -13,6 +13,7 @@ import Number
 data Expr (width :: Width) where
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
+    EMul     :: Expr width -> Expr width -> Expr width
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
@@ -49,6 +50,7 @@ showExpr e =
     case e of
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
+      EMul    a b -> binOp "*" a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> showExpr a
@@ -73,6 +75,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
         case e of
           EAdd     a b -> shrinkBinOp EAdd a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub a b ++ [ b | interpret a == 0 ]
+          EMul     a b -> shrinkBinOp EMul a b ++ [ b | interpret a == 1 ]
           EAnd     a b -> shrinkBinOp EAnd a b
           EOr      a b -> shrinkBinOp EOr  a b
           ENot     a   -> shrinkUnOp  ENot a <> [a]
@@ -107,6 +110,7 @@ genExpr' width = sized gen
             [ ELit <$> arbitrary
             , binary EAdd
             , binary ESub
+            , binary EMul
             , binary EAnd
             , binary EOr
             , EShl <$> arbitrary <*> smallLit -- Avoid memory blowup
@@ -152,6 +156,7 @@ interpret :: forall width. (KnownWidth width)
           => Expr width -> Number width
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
+interpret (EMul a b)   = interpret a * interpret b
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
 interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)

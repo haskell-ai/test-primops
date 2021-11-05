@@ -57,6 +57,7 @@ toCmmExpr e =
     case e of
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
+      EMul    a b -> binOp "*" a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> toCmmExpr a
