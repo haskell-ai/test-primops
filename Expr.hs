@@ -64,7 +64,32 @@ showExpr e =
 
 -- * Generating arbitrary expressions
 
-instance KnownWidth width => Arbitrary (Expr width) where arbitrary = genExpr
+instance KnownWidth width => Arbitrary (Expr width) where
+    arbitrary = genExpr
+    shrink e =
+        case e of
+          EAdd     a b -> shrinkBinOp EAdd a b
+          ESub     a b -> shrinkBinOp ESub a b
+          EAnd     a b -> shrinkBinOp EAnd a b
+          EOr      a b -> shrinkBinOp EOr  a b
+          ENot     a   -> shrinkUnOp  ENot a
+          EShl     a b -> shrinkBinOp EShl a b
+          EShr     a b -> shrinkBinOp EShr a b
+          ENegate  a   -> shrinkUnOp  ENegate a
+          ENarrow  a   -> shrinkUnOp  ENarrow a
+          ESignExt a   -> shrinkUnOp  ESignExt a
+          EZeroExt a   -> shrinkUnOp  EZeroExt a
+          ELit     a   -> map ELit (shrink a)
+      where
+        shrinkUnOp op a =
+            [ op (ELit $ interpret a)
+            , ELit $ interpret (op a)
+            ]
+        shrinkBinOp op a b =
+            [ op (ELit $ interpret a) b
+            , op a (ELit $ interpret b)
+            , ELit $ interpret (op a b)
+            ]
 
 genExpr :: forall width. (KnownWidth width) 
         => Gen (Expr width)
