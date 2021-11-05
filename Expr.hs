@@ -14,12 +14,13 @@ data Expr (width :: Width) where
     ESub     :: Expr width -> Expr width -> Expr width
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
+    ENot     :: Expr width -> Expr width
     ENegate  :: Expr width -> Expr width
-    ENarrow  :: (KnownWidth wide, Wider wide narrow)
+    ENarrow  :: (KnownWidth wide)
              => Expr wide -> Expr narrow
-    ESignExt :: (KnownWidth narrow, Wider wide narrow)
+    ESignExt :: (KnownWidth narrow)
              => Expr narrow -> Expr wide
-    EZeroExt :: (KnownWidth narrow, Wider wide narrow)
+    EZeroExt :: (KnownWidth narrow)
              => Expr narrow -> Expr wide
     ELit     :: Number width -> Expr width
 
@@ -45,6 +46,7 @@ showExpr e =
       ESub    a b -> binOp "-" a b
       EAnd    a b -> binOp "-" a b
       EOr     a b -> binOp "-" a b
+      ENot    a   -> parens $ "~" <> showExpr a
       ENegate a   -> parens $ "-" <> showExpr a
       ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
       ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
@@ -56,9 +58,15 @@ showExpr e =
 
 -- * Generating arbitrary expressions
 
-genExpr :: forall width. (KnownWidth width)
-        => Proxy width -> Gen (Expr width)
-genExpr width = sized gen
+instance KnownWidth width => Arbitrary (Expr width) where arbitrary = genExpr
+
+genExpr :: forall width. (KnownWidth width) 
+        => Gen (Expr width)
+genExpr = genExpr' (Proxy @width)
+
+genExpr' :: forall width. (KnownWidth width) 
+         => Proxy width -> Gen (Expr width)
+genExpr' width = sized gen
   where
     gen 0 = ELit <$> arbitrary
     gen _ = do
@@ -68,10 +76,39 @@ genExpr width = sized gen
             , binary ESub
             , binary EAnd
             , binary EOr
+            , ENot <$> arbitrary
+            , ENegate <$> arbitrary
+            , do SomeExpr e <- arbitrary 
+                 return $ ENarrow e
+            --, do SomeExpr e <- arbitrary 
+            --     return $ ESignExt e
+            , do SomeExpr e <- arbitrary 
+                 return $ EZeroExt e
             ]
 
-    subexpr2 = scale (`div` 2) . genExpr
+    subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
+
+-- * SomeExpr
+
+data SomeExpr where
+    SomeExpr :: KnownWidth width => Expr width -> SomeExpr
+
+instance Show SomeExpr where
+    show (SomeExpr (e :: Expr width)) =
+        "SomeExpr @" <> show (knownWidth @width) <> " " <> show e
+
+instance Arbitrary SomeExpr where
+    arbitrary = withArbitraryWidth arbitrary
+withArbitraryWidth
+    :: (forall width. KnownWidth width => Gen (Expr width))
+    -> Gen SomeExpr
+withArbitraryWidth f =
+    oneof [ SomeExpr <$> f @W8
+          , SomeExpr <$> f @W16
+          , SomeExpr <$> f @W32
+          , SomeExpr <$> f @W64
+          ]
 
 -- * Interpreter
 
@@ -81,6 +118,7 @@ interpret (EAdd a b)   = liftBinOp (+)   (interpret a) (interpret b)
 interpret (ESub a b)   = liftBinOp (-)   (interpret a) (interpret b)
 interpret (EAnd a b)   = liftBinOp (.&.) (interpret a) (interpret b)
 interpret (EOr  a b)   = liftBinOp (.|.) (interpret a) (interpret b)
+interpret (ENot a)     = complementNumber (interpret a)
 interpret (ENegate a)  = negateNumber (interpret a)
 interpret (ENarrow a)  = truncateNumber (interpret a)
 interpret (ESignExt a) = signExtNumber (interpret a)

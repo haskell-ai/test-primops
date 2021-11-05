@@ -30,13 +30,6 @@ n32 = mkNumber
 n64 :: Integer -> Number W64
 n64 = mkNumber
 
-liftBinOp
-    :: forall width. KnownWidth width
-    => (Integer -> Integer -> Integer)
-    -> Number width -> Number width -> Number width
-liftBinOp f (Number a) (Number b) =
-    Number $ truncate (knownWidth @width) (f a b)
-
 instance (KnownWidth width) => Enum (Number width) where
     fromEnum (Number n) = fromIntegral n
     toEnum (Number . fromIntegral -> n)
@@ -49,17 +42,31 @@ instance (KnownWidth width) => Bounded (Number width) where
     maxBound = Number ((1 `shiftL` widthBits (knownWidth @width)) - 1)
 
 instance (KnownWidth width) => Arbitrary (Number width) where
-    arbitrary = arbitraryBoundedEnum
+    arbitrary = Number <$> chooseInteger (a,b)
+      where
+        Number a = minBound @(Number width)
+        Number b = maxBound @(Number width)
+
+liftBinOp
+    :: forall width. KnownWidth width
+    => (Integer -> Integer -> Integer)
+    -> Number width -> Number width -> Number width
+liftBinOp f (Number a) (Number b) =
+    Number $ truncate (knownWidth @width) (f a b)
 
 truncateNumber :: forall wide narrow. (KnownWidth narrow)
                => Number wide -> Number narrow
 truncateNumber (Number n) =
     Number (truncate (knownWidth @narrow) n)
 
-negateNumber :: forall wide narrow. (KnownWidth narrow)
-             => Number wide -> Number narrow
+complementNumber :: forall wide narrow. (KnownWidth narrow)
+                 => Number wide -> Number narrow
+complementNumber (Number n) = mkNumber $ complement n
+
+negateNumber :: forall narrow. (KnownWidth narrow)
+             => Number narrow -> Number narrow
 negateNumber (Number n) =
-    Number $ truncate (knownWidth @narrow) (negate n)
+    mkNumber $ negate n
 
 signExtNumber :: forall wide narrow. (KnownWidth narrow)
               => Number wide -> Number narrow
