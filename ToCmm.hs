@@ -60,7 +60,7 @@ toCmmExpr e =
       ENegate a   -> parens $ "-" <> toCmmExpr a
       ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (toCmmExpr a)
       ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (toCmmExpr a)
-      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @narrow) <> parens (toCmmExpr a)
+      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @width) <> parens (toCmmExpr a)
       ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
