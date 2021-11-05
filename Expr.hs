@@ -82,15 +82,10 @@ instance KnownWidth width => Arbitrary (Expr width) where
           ELit     a   -> map ELit (shrink a)
       where
         shrinkUnOp op a =
-            [ ELit $ interpret (op a)
-            , op (ELit $ interpret a)
-            ] ++
+            [ ELit $ interpret (op a) ] ++
             [ op a' | a' <- shrink a ]
         shrinkBinOp op a b =
-            [ ELit $ interpret (op a b)
-            , op (ELit $ interpret a) b
-            , op a (ELit $ interpret b)
-            ] ++
+            [ ELit $ interpret (op a b) ] ++
             [ op a' b' | (a', b') <- shrink (a, b) ]
 
 genExpr :: forall width. (KnownWidth width) 
