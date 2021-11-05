@@ -16,7 +16,14 @@ hsType :: Width -> String
 hsType W8  = "Word8#"
 hsType W16 = "Word16#"
 hsType W32 = "Word32#"
-hsType W64 = "Word64#"
+hsType W64 = "Word#"
+
+toHsWord :: Width -> String -> String
+toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
+  where
+    extendFn
+      | w == W64  = ""
+      | otherwise =  "extendWord" <> show (widthBits w) <> "#"
 
 cmmType :: Width -> String
 cmmType W8  = "bits8"
@@ -47,19 +54,21 @@ toCmmExpr e =
       ESub    a b -> binOp "-" a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
-      ENot    a   -> parens $ "~" <> showExpr a
+      ENot    a   -> parens $ "~" <> toCmmExpr a
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
-      ENegate a   -> parens $ "-" <> showExpr a
-      ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (showExpr a)
-      ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (showExpr a)
-      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @width) <> parens (showExpr a)
+      ENegate a   -> parens $ "-" <> toCmmExpr a
+      ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (toCmmExpr a)
+      ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (toCmmExpr a)
+      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @narrow) <> parens (toCmmExpr a)
       ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
-    binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
-    parens s = concat ["(", s, ")"]
+    binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
 
-evalGhc :: KnownWidth width => Expr width -> IO Integer
+parens :: String -> String
+parens s = concat ["(", s, ")"]
+
+evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Integer
 evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
@@ -68,9 +77,9 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "module Main where"
         , "import Data.Word"
         , "import GHC.Exts"
-        , "foreign import prim \"test\" test :: Word# -> Word#"
+        , "foreign import prim \"test\" test :: Word# -> " <> hsType w
         , "main :: IO ()"
-        , "main = print (W# (test 0##))"
+        , "main = print $ " <> toHsWord w "test 0##"
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
@@ -78,6 +87,7 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
   where
+    w = knownWidth @width
     runProcess p = do
         (_, _, _, hdl) <- createProcess p
         ExitSuccess <- waitForProcess hdl

@@ -8,13 +8,11 @@ import Number
 import Expr
 import ToCmm
 
-type WordSize = W64
-
-prop :: SomeExpr -> Property
-prop (SomeExpr e) =
+prop :: KnownWidth width => Expr width -> Property
+prop e =
     ioProperty $ do
         r <- evalGhc e
         return $ getNumber (interpret e) === r
 
 main :: IO ()
-main = quickCheck prop
+main = quickCheck (prop @W64)

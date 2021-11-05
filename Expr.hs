@@ -1,6 +1,7 @@
 -- | Expressions
 module Expr where
 
+import Control.Monad
 import Data.Bits as Bits
 import Test.QuickCheck hiding ((.&.))
 import Data.Proxy
@@ -38,10 +39,11 @@ l32 = ELit . n32
 l64 :: Integer -> Expr W64
 l64 = ELit . n64
 
-instance Show (Expr width) where
+instance KnownWidth width => Show (Expr width) where
     show = showExpr
 
-showExpr :: Expr width -> String
+showExpr :: forall width. (KnownWidth width)
+         => Expr width -> String
 showExpr e =
     case e of
       EAdd    a b -> binOp "+" a b
@@ -55,7 +57,7 @@ showExpr e =
       ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
       ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
       EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "> ", showExpr a]
-      ELit a      -> show a
+      ELit a      -> parens (show a <> "::" <> show (knownWidth @width))
   where
     binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
     parens s = concat ["(", s, ")"]
@@ -74,7 +76,7 @@ genExpr' width = sized gen
   where
     gen 0 = ELit <$> arbitrary
     gen _ = do
-        oneof
+        oneof $
             [ ELit <$> arbitrary
             , binary EAdd
             , binary ESub
@@ -88,10 +90,14 @@ genExpr' width = sized gen
                  return $ ENarrow e
             --, do SomeExpr e <- arbitrary 
             --     return $ ESignExt e
-            , do SomeExpr e <- arbitrary 
-                 return $ EZeroExt e
             ]
+            ++ if w == W8 then [] else
+               [ EZeroExt <$> genExpr @W16
+               , EZeroExt <$> genExpr @W32
+               , EZeroExt <$> genExpr @W64
+               ]
 
+    w = knownWidth @width
     subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
 
