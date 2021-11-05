@@ -1,4 +1,5 @@
--- | Fixed-width numbers. In hindsight this should have been called "bit-pattern".
+-- | Fixed-width numbers. In hindsight this should have been called
+-- "bit-pattern".
 module Number
     ( Number
     , getNumber
