@@ -51,7 +51,7 @@ instance (KnownWidth width) => Arbitrary (Number width) where
         Number b = maxBound @(Number width)
     shrink (Number 0) = []
     shrink (Number 1) = [mkNumber 0]
-    shrink (Number x) = map mkNumber [0, 1, x-1, x `div` 2]
+    shrink (Number x) = map mkNumber [0, 1, x `div` 2]
 
 instance (KnownWidth width) => Num (Number width) where
     (+) = liftBinOp (+)
