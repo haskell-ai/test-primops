@@ -57,7 +57,7 @@ toCmmExpr e =
       ENot    a   -> parens $ "~" <> toCmmExpr a
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
-      ENegate a   -> parens $ "-" <> toCmmExpr a
+      ENegate a   -> "%neg" <> parens (toCmmExpr a)
       ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (toCmmExpr a)
       ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (toCmmExpr a)
       EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @width) <> parens (toCmmExpr a)
