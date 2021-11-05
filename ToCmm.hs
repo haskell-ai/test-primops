@@ -9,6 +9,7 @@ import System.Exit
 import System.Process
 import System.IO.Temp
 import System.FilePath
+import Data.List (intercalate)
 
 import Width
 import Number
@@ -52,6 +53,9 @@ narrowOp w = "%lobits" <> show (widthBits w)
 zeroExtOp w = "%zx" <> show (widthBits w)
 signExtOp w = "%sx" <> show (widthBits w)
 
+machOp :: String -> [String] -> String
+machOp op args = op <> parens (intercalate "," args)
+
 toCmmExpr :: forall width. KnownWidth width => Expr width -> String
 toCmmExpr e =
     case e of
@@ -61,12 +65,12 @@ toCmmExpr e =
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> toCmmExpr a
-      EShl    a b -> binOp "<<" a b
-      EShr    a b -> binOp ">>" a b
-      ENegate a   -> "%neg" <> parens (toCmmExpr a)
-      ENarrow (a :: Expr wide)    -> narrowOp  w <> parens (toCmmExpr a)
-      ESignExt (a :: Expr narrow) -> signExtOp w <> parens (toCmmExpr a)
-      EZeroExt (a :: Expr narrow) -> zeroExtOp w <> parens (toCmmExpr a)
+      EShl    a b                 -> machOp "%shl"        [toCmmExpr a, toCmmExpr b]
+      EShr    a b                 -> machOp "%shrl"       [toCmmExpr a, toCmmExpr b]
+      ENegate a                   -> machOp "%neg"        [toCmmExpr a]
+      ENarrow (a :: Expr wide)    -> machOp (narrowOp  w) [toCmmExpr a]
+      ESignExt (a :: Expr narrow) -> machOp (signExtOp w) [toCmmExpr a]
+      EZeroExt (a :: Expr narrow) -> machOp (zeroExtOp w) [toCmmExpr a]
       ELoad off -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
       ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
