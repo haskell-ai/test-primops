@@ -125,9 +125,11 @@ genExpr' width = sized gen
             , binary EMul
             , binary EAnd
             , binary EOr
-            , EShl <$> arbitrary <*> smallLit -- Avoid memory blowup
-            , EShrl <$> arbitrary <*> arbitrary
-            , EShra <$> arbitrary <*> arbitrary
+            -- N.B. C--'s shift primops are undefined with shifts outside of
+            -- [0,WORD_SIZE).
+            , EShl <$> arbitrary <*> arbitraryShift
+            , EShrl <$> arbitrary <*> arbitraryShift
+            , EShra <$> arbitrary <*> arbitraryShift
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
             , do off <- chooseNumber (0, fromIntegral bufferSize-1)
@@ -137,7 +139,7 @@ genExpr' width = sized gen
             ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
             ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
 
-    smallLit = ELit <$> chooseNumber (0, 96)
+    arbitraryShift = ELit <$> chooseNumber (0, 64-1)
     subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
 
