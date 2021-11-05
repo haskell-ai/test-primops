@@ -129,7 +129,8 @@ genExpr' width = sized gen
             -- [0,WORD_SIZE).
             , EShl <$> arbitrary <*> arbitraryShift
             , EShrl <$> arbitrary <*> arbitraryShift
-            , EShra <$> arbitrary <*> arbitraryShift
+            -- See https://gitlab.haskell.org/ghc/ghc/-/issues/20626
+            -- , EShra <$> arbitrary <*> arbitraryShift
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
             , do off <- chooseNumber (0, fromIntegral bufferSize-1)
