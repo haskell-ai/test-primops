@@ -20,4 +20,6 @@ ghcAgrees e = ioProperty $ do
     return $ getNumber (interpret e) === r
 
 main :: IO ()
-main = quickCheck (prop @W64)
+main = do
+    createBufferFile
+    quickCheck $ verbose (prop @W64)

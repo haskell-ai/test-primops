@@ -25,6 +25,7 @@ data Expr (width :: Width) where
              => Expr narrow -> Expr wide
     EZeroExt :: (KnownWidth narrow)
              => Expr narrow -> Expr wide
+    ELoad    :: Expr W64 -> Expr width
     ELit     :: Number width -> Expr width
 
 l8 :: Integer -> Expr W8
@@ -57,6 +58,7 @@ showExpr e =
       ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
       ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
       EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "> ", showExpr a]
+      ELoad off   -> parens (show (knownWidth @width) <> "* " <> showExpr off)
       ELit a      -> parens (show a <> "::" <> show (knownWidth @width))
   where
     binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
@@ -79,6 +81,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
           ENarrow  a   -> shrinkUnOp  ENarrow a
           ESignExt a   -> shrinkUnOp  ESignExt a
           EZeroExt a   -> shrinkUnOp  EZeroExt a
+          ELoad    a   -> shrinkUnOp  ELoad a
           ELit     a   -> map ELit (shrink a)
       where
         shrinkUnOp op a =
@@ -104,7 +107,7 @@ genExpr' width = sized gen
             , binary ESub
             , binary EAnd
             , binary EOr
-            , EShl <$> arbitrary <*> arbitrary
+            , EShl <$> arbitrary <*> resize 4 arbitrary
             , EShr <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
@@ -112,6 +115,9 @@ genExpr' width = sized gen
                  return $ ENarrow e
             --, do SomeExpr e <- arbitrary 
             --     return $ ESignExt e
+            , do off <- resize 4 arbitrary
+                 unless (validOffset $ getNumber $ interpret off) discard
+                 return $ ELoad off
             ]
             ++ if w == W8 then [] else
                [ EZeroExt <$> genExpr @W16
@@ -160,4 +166,17 @@ interpret (ENegate a)  = negate (interpret a)
 interpret (ENarrow a)  = truncateNumber (interpret a)
 interpret (ESignExt a) = signExtNumber (interpret a)
 interpret (EZeroExt a) = zeroExtNumber (interpret a)
+interpret (ELoad off)  = load $ getNumber $ interpret off
 interpret (ELit n)     = n
+
+bufferSize :: Integer
+bufferSize = 1 `shiftL` 15
+
+validOffset :: Integer -> Bool
+validOffset off = off > 0 && off < bufferSize
+
+load :: KnownWidth width => Integer -> Number width
+load off
+  | not (validOffset off) = error "invalid offset"
+  | otherwise             = 0
+    

@@ -1,4 +1,9 @@
-module ToCmm where
+module ToCmm
+    ( createBufferFile
+    , evalGhc
+    , toCmmDecl
+    , toCmmExpr
+    ) where
 
 import System.Exit
 import System.Process
@@ -34,7 +39,7 @@ cmmType W64 = "bits64"
 toCmmDecl :: KnownWidth width => String -> Expr width -> String
 toCmmDecl name e = unlines
     [ "#include \"Cmm.h\""
-    , name <> " ( W_ arg1 )"
+    , name <> " ( W_ buffer )"
     , "{"
     , "  W_ ret;"
     , "  ret = " <> toCmmExpr e <> ";"
@@ -58,15 +63,22 @@ toCmmExpr e =
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
       ENegate a   -> "%neg" <> parens (toCmmExpr a)
-      ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (toCmmExpr a)
-      ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (toCmmExpr a)
-      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @width) <> parens (toCmmExpr a)
+      ENarrow (a :: Expr wide)    -> narrowOp  w <> parens (toCmmExpr a)
+      ESignExt (a :: Expr narrow) -> signExtOp w <> parens (toCmmExpr a)
+      EZeroExt (a :: Expr narrow) -> zeroExtOp w <> parens (toCmmExpr a)
+      ELoad off -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
       ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
+    w = knownWidth @width
 
-parens :: String -> String
+parens, braces :: String -> String
 parens s = concat ["(", s, ")"]
+braces s = concat ["[", s, "]"]
+
+createBufferFile :: IO ()
+createBufferFile = do
+    writeFile "test" $ replicate (fromIntegral bufferSize) '\0'
 
 evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Integer
 evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
@@ -77,18 +89,23 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "module Main where"
         , "import Data.Word"
         , "import GHC.Exts"
-        , "foreign import prim \"test\" test :: Word# -> " <> hsType w
+        , "import GHC.Ptr (Ptr(Ptr))"
+        , "import System.IO.MMap"
+        , "foreign import prim \"test\" test :: Addr# -> " <> hsType w
         , "main :: IO ()"
-        , "main = print $ " <> toHsWord w "test 0##"
+        , "main = do"
+        , "  (Ptr p, _, _, _) <- mmapFilePtr \"test\" ReadOnly Nothing"
+        , "  print $ " <> toHsWord w "test p"
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
-    runProcess $ inTmp (proc ghcPath [hsSrc, cmmSrc, "-v0", "-o", exeName])
+    let ghcArgs = ["-O0"]
+    runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ [hsSrc, cmmSrc, "-o", exeName])
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
   where
     w = knownWidth @width
-    runProcess p = do
+    runProcess' p = do
         (_, _, _, hdl) <- createProcess p
         ExitSuccess <- waitForProcess hdl
         return ()
