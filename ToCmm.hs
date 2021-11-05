@@ -41,10 +41,9 @@ cmmType W64 = "bits64"
 
 toCmmDecl :: KnownWidth width => String -> Expr width -> String
 toCmmDecl name e = unlines
-    [ "#include \"Cmm.h\""
-    , name <> " ( W_ buffer )"
+    [ name <> " ( bits64 buffer )"
     , "{"
-    , "  W_ ret;"
+    , "  bits64 ret;"
     , "  ret = " <> toCmmExpr e <> ";"
     , "  return (ret);"
     , "}"
