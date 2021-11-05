@@ -1,6 +1,7 @@
 -- | Expressions
 module Expr where
 
+import Numeric.Natural
 import Control.Monad
 import Data.Bits as Bits
 import Test.QuickCheck hiding ((.&.))
@@ -37,16 +38,16 @@ instance KnownWidth width => Num (Expr width) where
     abs = id
     fromInteger = ELit . fromInteger
 
-l8 :: Integer -> Expr W8
+l8 :: Natural -> Expr W8
 l8 = ELit . n8
 
-l16 :: Integer -> Expr W16
+l16 :: Natural -> Expr W16
 l16 = ELit . n16
 
-l32 :: Integer -> Expr W32
+l32 :: Natural -> Expr W32
 l32 = ELit . n32
 
-l64 :: Integer -> Expr W64
+l64 :: Natural -> Expr W64
 l64 = ELit . n64
 
 instance KnownWidth width => Show (Expr width) where
@@ -125,8 +126,8 @@ genExpr' width = sized gen
             , EShr <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
-            , do off <- chooseInteger (0, bufferSize-1)
-                 return $ ELoad $ ELit $ mkNumber off
+            , do off <- chooseNumber (0, fromIntegral bufferSize-1)
+                 return $ ELoad $ ELit off
             ]
             ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
             ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
@@ -177,13 +178,13 @@ interpret (EZeroExt a) = zeroExtNumber (interpret a)
 interpret (ELoad off)  = load $ getNumber $ interpret off
 interpret (ELit n)     = n
 
-bufferSize :: Integer
+bufferSize :: Natural
 bufferSize = 1 `shiftL` 22
 
-validOffset :: Integer -> Bool
-validOffset off = off >= 0 && off < bufferSize
+validOffset :: Natural -> Bool
+validOffset off = off < bufferSize
 
-load :: KnownWidth width => Integer -> Number width
+load :: KnownWidth width => Natural -> Number width
 load off
   | not (validOffset off) = error $ "invalid offset " <> show off
   | otherwise             = 0

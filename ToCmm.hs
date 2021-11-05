@@ -10,6 +10,7 @@ import System.Process
 import System.IO.Temp
 import System.FilePath
 import Data.List (intercalate)
+import Numeric.Natural
 
 import Width
 import Number
@@ -85,7 +86,7 @@ createBufferFile :: IO ()
 createBufferFile = do
     writeFile "test" $ replicate (fromIntegral bufferSize) '\0'
 
-evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Integer
+evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Natural
 evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
