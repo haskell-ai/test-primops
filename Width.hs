@@ -6,6 +6,8 @@ import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
 
+type WordSize = W64
+
 data Width = W8 | W16 | W32 | W64
     deriving (Eq, Ord, Show, Enum, Bounded)
 

@@ -66,15 +66,15 @@ toCmmExpr e =
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> toCmmExpr a
-      EShl    a b                 -> machOp "%shl"        [toCmmExpr a, toCmmExpr b]
-      EShrl   a b                 -> machOp "%shrl"       [toCmmExpr a, toCmmExpr b]
-      EShra   a b                 -> machOp "%shra"       [toCmmExpr a, toCmmExpr b]
-      ENegate a                   -> machOp "%neg"        [toCmmExpr a]
-      ENarrow (a :: Expr wide)    -> machOp (narrowOp  w) [toCmmExpr a]
-      ESignExt (a :: Expr narrow) -> machOp (signExtOp w) [toCmmExpr a]
-      EZeroExt (a :: Expr narrow) -> machOp (zeroExtOp w) [toCmmExpr a]
-      ELoad off -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
-      ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
+      EShl    a b -> machOp "%shl"        [toCmmExpr a, toCmmExpr b]
+      EShrl   a b -> machOp "%shrl"       [toCmmExpr a, toCmmExpr b]
+      EShra   a b -> machOp "%shra"       [toCmmExpr a, toCmmExpr b]
+      ENegate a   -> machOp "%neg"        [toCmmExpr a]
+      ENarrow a   -> machOp (narrowOp  w) [toCmmExpr a]
+      ESignExt a  -> machOp (signExtOp w) [toCmmExpr a]
+      EZeroExt a  -> machOp (zeroExtOp w) [toCmmExpr a]
+      ELoad off   -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
+      ELit n      -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
     w = knownWidth @width
