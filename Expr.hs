@@ -18,9 +18,9 @@ data Expr (width :: Width) where
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
-    EShl     :: Expr width -> Expr W8 -> Expr width
-    EShrl    :: Expr width -> Expr W8 -> Expr width
-    EShra    :: Expr width -> Expr W8 -> Expr width
+    EShl     :: Expr width -> Expr W64 -> Expr width
+    EShrl    :: Expr width -> Expr W64 -> Expr width
+    EShra    :: Expr width -> Expr W64 -> Expr width
     ENegate  :: Expr width -> Expr width
     ENarrow  :: (KnownWidth wide, wide `WiderThan` narrow)
              => Expr wide -> Expr narrow
