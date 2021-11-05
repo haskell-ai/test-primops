@@ -1,10 +1,11 @@
--- | Fixed-width numbers.
+-- | Fixed-width numbers. In hindsight this should have been called "bit-pattern".
 module Number
     ( Number
     , getNumber
     , chooseNumber
     , mkNumber
     , n8, n16, n32, n64
+    , ones
     , truncateNumber
     , signExtNumber
     , zeroExtNumber
