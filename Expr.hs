@@ -19,7 +19,8 @@ data Expr (width :: Width) where
     EOr      :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
     EShl     :: Expr width -> Expr W8 -> Expr width
-    EShr     :: Expr width -> Expr W8 -> Expr width
+    EShrl    :: Expr width -> Expr W8 -> Expr width
+    EShra    :: Expr width -> Expr W8 -> Expr width
     ENegate  :: Expr width -> Expr width
     ENarrow  :: (KnownWidth wide, wide `WiderThan` narrow)
              => Expr wide -> Expr narrow
@@ -64,7 +65,8 @@ showExpr e =
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> showExpr a
       EShl    a b -> binOp "<<" a b
-      EShr    a b -> binOp ">>" a b
+      EShrl   a b -> binOp ">>l" a b
+      EShra   a b -> binOp ">>a" a b
       ENegate a   -> parens $ "-" <> showExpr a
       ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "->", show w, "> ", showExpr a]
       ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "->", show w, "> ", showExpr a]
@@ -89,7 +91,8 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EOr      a b -> shrinkBinOp EOr  a b
           ENot     a   -> shrinkUnOp  ENot a <> [a]
           EShl     a b -> shrinkBinOp EShl a b ++ [ a | interpret b == 0 ]
-          EShr     a b -> shrinkBinOp EShr a b ++ [ a | interpret b == 0 ]
+          EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
+          EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
           ENegate  a   -> shrinkUnOp  ENegate a <> [a]
           ENarrow  a   -> shrinkUnOp  ENarrow a
           ESignExt a   -> shrinkUnOp  ESignExt a
@@ -123,7 +126,8 @@ genExpr' width = sized gen
             , binary EAnd
             , binary EOr
             , EShl <$> arbitrary <*> smallLit -- Avoid memory blowup
-            , EShr <$> arbitrary <*> arbitrary
+            , EShrl <$> arbitrary <*> arbitrary
+            , EShra <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
             , do off <- chooseNumber (0, fromIntegral bufferSize-1)
@@ -169,7 +173,8 @@ interpret (EMul a b)   = interpret a * interpret b
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
 interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)
-interpret (EShr a b)   = interpret a `shiftR` fromIntegral (getNumber $ interpret b)
+interpret (EShrl a b)  = interpret a `shiftRl` fromIntegral (getNumber $ interpret b)
+interpret (EShra a b)  = interpret a `shiftRa` fromIntegral (getNumber $ interpret b)
 interpret (ENot a)     = complement (interpret a)
 interpret (ENegate a)  = negate (interpret a)
 interpret (ENarrow a)  = truncateNumber (interpret a)

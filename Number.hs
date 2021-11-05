@@ -8,6 +8,7 @@ module Number
     , truncateNumber
     , signExtNumber
     , zeroExtNumber
+    , shiftRa, shiftRl
     ) where
 
 import Data.Bits
@@ -119,19 +120,41 @@ truncateNumber
     => Number wide -> Number narrow
 truncateNumber (Number n) = mkNumber n
 
+signExtend :: Int   -- ^ Initial width
+           -> Int   -- ^ Target width
+           -> Natural -> Natural
+signExtend w0 w1 n
+  | n `testBit` signBit = n .|. (highBits `shiftL` w0)
+  | otherwise           = n
+  where
+    signBit = w0 - 1
+    highBits = (1 `shiftL` (w1 - w0)) - 1
+
 signExtNumber
     :: forall wide narrow. (KnownWidth narrow, KnownWidth wide)
     => Number narrow -> Number wide
-signExtNumber (Number n')
-  | n' `testBit` signBit = Number $ n' .|. highBits
-  | otherwise            = Number n'
+signExtNumber (Number n) = Number $ signExtend narrowW wideW n
   where
-    highBits = ((1 `shiftL` (wideW - narrowW)) - 1) `shiftL` narrowW
     narrowW  = widthBits $ knownWidth @narrow
     wideW    = widthBits $ knownWidth @wide
-    signBit  = narrowW - 1
 
 zeroExtNumber
     :: forall wide narrow. (KnownWidth wide)
     => Number narrow -> Number wide
 zeroExtNumber (Number n) = mkNumber n
+
+shiftRa
+    :: forall width. (KnownWidth width)
+    => Number width -> Int -> Number width
+shiftRa (Number n) s
+  | s < 0     = error "negative shift"
+  | otherwise = Number $ signExtend (w-s) w (shiftR n s)
+  where
+    w = widthBits $ knownWidth @width
+
+shiftRl
+    :: forall width. (KnownWidth width)
+    => Number width -> Int -> Number width
+shiftRl n s
+  | s < 0     = error "negative shift"
+  | otherwise = shiftR n s
