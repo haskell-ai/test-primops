@@ -55,12 +55,13 @@ showExpr e =
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
       ENegate a   -> parens $ "-" <> showExpr a
-      ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
-      ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
-      EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "> ", showExpr a]
+      ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "->", show w, "> ", showExpr a]
+      ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "->", show w, "> ", showExpr a]
+      EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "->", show w, "> ", showExpr a]
       ELoad off   -> parens (show (knownWidth @width) <> "* " <> showExpr off)
       ELit a      -> parens (show a <> "::" <> show (knownWidth @width))
   where
+    w = knownWidth @width
     binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
     parens s = concat ["(", s, ")"]
 
