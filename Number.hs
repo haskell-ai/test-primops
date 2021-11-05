@@ -106,14 +106,24 @@ liftBinOp
     -> Number width -> Number width -> Number width
 liftBinOp f (Number a) (Number b) = mkNumber (f a b)
 
-truncateNumber :: forall wide narrow. (KnownWidth narrow)
-               => Number wide -> Number narrow
+truncateNumber
+    :: forall wide narrow. (KnownWidth narrow)
+    => Number wide -> Number narrow
 truncateNumber (Number n) = mkNumber n
 
-signExtNumber :: forall wide narrow. (KnownWidth narrow)
-              => Number narrow -> Number wide
-signExtNumber (Number _) = undefined
+signExtNumber
+    :: forall wide narrow. (KnownWidth narrow, KnownWidth wide)
+    => Number narrow -> Number wide
+signExtNumber (Number n')
+  | n' `testBit` signBit = Number $ n' .|. highBits
+  | otherwise            = Number n'
+  where
+    highBits = ((1 `shiftL` (wideW - narrowW)) - 1) `shiftL` narrowW
+    narrowW  = widthBits $ knownWidth @narrow
+    wideW    = widthBits $ knownWidth @wide
+    signBit  = narrowW - 1
 
-zeroExtNumber :: forall wide narrow. (KnownWidth wide)
-              => Number narrow -> Number wide
+zeroExtNumber
+    :: forall wide narrow. (KnownWidth wide)
+    => Number narrow -> Number wide
 zeroExtNumber (Number n) = mkNumber n

@@ -117,7 +117,7 @@ genExpr' width = sized gen
                  return $ ELoad $ ELit $ mkNumber off
             ]
             ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
-            -- ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
+            ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
             ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
 
     smallLit = ELit <$> chooseNumber (0, 96)
