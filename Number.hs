@@ -1,18 +1,21 @@
 -- | Fixed-width numbers.
 module Number where
 
-import Data.Bits as Bits
+import Data.Bits
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
 
 import Width
 
-data Number (width :: Width) where
+newtype Number (width :: Width) where
     Number :: Integer -> Number width
   deriving (Eq, Ord)
 
 instance Show (Number width) where
     show (Number n) = show n
+
+getNumber :: Number width -> Integer
+getNumber (Number n) = n
 
 mkNumber :: forall width. (KnownWidth width)
          => Integer -> Number width
@@ -47,26 +50,48 @@ instance (KnownWidth width) => Arbitrary (Number width) where
         Number a = minBound @(Number width)
         Number b = maxBound @(Number width)
 
+instance (KnownWidth width) => Num (Number width) where
+    (+) = liftBinOp (+)
+    (-) = liftBinOp (-)
+    (*) = liftBinOp (*)
+    signum _ = 1
+    abs = id
+    fromInteger = Number
+
+instance (KnownWidth width) => Bits (Number width) where
+    (.&.) = liftBinOp (.&.)
+    (.|.) = liftBinOp (.|.)
+    xor   = liftBinOp xor
+    complement = liftUnOp complement
+    n `shift` s
+      | s < negate w = 0
+      | s > w        = 0
+      | otherwise    = liftUnOp (`shift` s) n
+      where w = widthBits (knownWidth @width)
+    rotate = undefined -- TODO
+    bitSize _ = widthBits (knownWidth @width)
+    bitSizeMaybe = Just . bitSize
+    isSigned _ = False
+    testBit (Number n) i = n `testBit` i
+    bit i = mkNumber $ bit i
+    popCount (Number n) = popCount n
+
+liftUnOp
+    :: forall width. KnownWidth width
+    => (Integer -> Integer)
+    -> Number width -> Number width
+liftUnOp f (Number a) =
+    mkNumber (f a)
+
 liftBinOp
     :: forall width. KnownWidth width
     => (Integer -> Integer -> Integer)
     -> Number width -> Number width -> Number width
-liftBinOp f (Number a) (Number b) =
-    Number $ truncate (knownWidth @width) (f a b)
+liftBinOp f (Number a) (Number b) = mkNumber (f a b)
 
 truncateNumber :: forall wide narrow. (KnownWidth narrow)
                => Number wide -> Number narrow
-truncateNumber (Number n) =
-    Number (truncate (knownWidth @narrow) n)
-
-complementNumber :: forall wide narrow. (KnownWidth narrow)
-                 => Number wide -> Number narrow
-complementNumber (Number n) = mkNumber $ complement n
-
-negateNumber :: forall narrow. (KnownWidth narrow)
-             => Number narrow -> Number narrow
-negateNumber (Number n) =
-    mkNumber $ negate n
+truncateNumber (Number n) = mkNumber n
 
 signExtNumber :: forall wide narrow. (KnownWidth narrow)
               => Number wide -> Number narrow

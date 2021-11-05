@@ -15,6 +15,8 @@ data Expr (width :: Width) where
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
+    EShl     :: Expr width -> Expr W8 -> Expr width
+    EShr     :: Expr width -> Expr W8 -> Expr width
     ENegate  :: Expr width -> Expr width
     ENarrow  :: (KnownWidth wide)
              => Expr wide -> Expr narrow
@@ -47,6 +49,8 @@ showExpr e =
       EAnd    a b -> binOp "-" a b
       EOr     a b -> binOp "-" a b
       ENot    a   -> parens $ "~" <> showExpr a
+      EShl    a b -> binOp "<<" a b
+      EShr    a b -> binOp ">>" a b
       ENegate a   -> parens $ "-" <> showExpr a
       ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
       ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
@@ -76,6 +80,8 @@ genExpr' width = sized gen
             , binary ESub
             , binary EAnd
             , binary EOr
+            , EShl <$> arbitrary <*> arbitrary
+            , EShr <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
             , do SomeExpr e <- arbitrary 
@@ -118,8 +124,10 @@ interpret (EAdd a b)   = liftBinOp (+)   (interpret a) (interpret b)
 interpret (ESub a b)   = liftBinOp (-)   (interpret a) (interpret b)
 interpret (EAnd a b)   = liftBinOp (.&.) (interpret a) (interpret b)
 interpret (EOr  a b)   = liftBinOp (.|.) (interpret a) (interpret b)
-interpret (ENot a)     = complementNumber (interpret a)
-interpret (ENegate a)  = negateNumber (interpret a)
+interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)
+interpret (EShr a b)   = interpret a `shiftR` fromIntegral (getNumber $ interpret b)
+interpret (ENot a)     = complement (interpret a)
+interpret (ENegate a)  = negate (interpret a)
 interpret (ENarrow a)  = truncateNumber (interpret a)
 interpret (ESignExt a) = signExtNumber (interpret a)
 interpret (EZeroExt a) = zeroExtNumber (interpret a)
