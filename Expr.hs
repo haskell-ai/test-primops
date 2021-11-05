@@ -115,9 +115,8 @@ genExpr' width = sized gen
                  return $ ENarrow e
             --, do SomeExpr e <- arbitrary 
             --     return $ ESignExt e
-            , do off <- resize 4 arbitrary
-                 unless (validOffset $ getNumber $ interpret off) discard
-                 return $ ELoad off
+            , do off <- chooseInteger (0, bufferSize)
+                 return $ ELoad $ ELit $ mkNumber off
             ]
             ++ if w == W8 then [] else
                [ EZeroExt <$> genExpr @W16
@@ -170,7 +169,7 @@ interpret (ELoad off)  = load $ getNumber $ interpret off
 interpret (ELit n)     = n
 
 bufferSize :: Integer
-bufferSize = 1 `shiftL` 15
+bufferSize = 1 `shiftL` 22
 
 validOffset :: Integer -> Bool
 validOffset off = off > 0 && off < bufferSize
