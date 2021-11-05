@@ -85,7 +85,8 @@ instance KnownWidth width => Arbitrary (Expr width) where
           ELit     a   -> map ELit (shrink a)
       where
         shrinkUnOp op a =
-            [ ELit $ interpret (op a) ] ++
+            [ ELit $ interpret (op a)
+            ] ++
             [ op a' | a' <- shrink a ]
         shrinkBinOp op a b =
             [ ELit $ interpret (op a b) ] ++
@@ -155,10 +156,10 @@ withArbitraryWidth f =
 
 interpret :: forall width. (KnownWidth width)
           => Expr width -> Number width
-interpret (EAdd a b)   = liftBinOp (+)   (interpret a) (interpret b)
-interpret (ESub a b)   = liftBinOp (-)   (interpret a) (interpret b)
-interpret (EAnd a b)   = liftBinOp (.&.) (interpret a) (interpret b)
-interpret (EOr  a b)   = liftBinOp (.|.) (interpret a) (interpret b)
+interpret (EAdd a b)   = interpret a + interpret b
+interpret (ESub a b)   = interpret a - interpret b
+interpret (EAnd a b)   = interpret a .&. interpret b
+interpret (EOr  a b)   = interpret a .|. interpret b
 interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)
 interpret (EShr a b)   = interpret a `shiftR` fromIntegral (getNumber $ interpret b)
 interpret (ENot a)     = complement (interpret a)

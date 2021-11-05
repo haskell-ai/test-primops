@@ -1,5 +1,14 @@
 -- | Fixed-width numbers.
-module Number where
+module Number
+    ( Number
+    , getNumber
+    , chooseNumber
+    , mkNumber
+    , n8, n16, n32, n64
+    , truncateNumber
+    , signExtNumber
+    , zeroExtNumber
+    ) where
 
 import Data.Bits
 import Test.QuickCheck hiding ((.&.))
