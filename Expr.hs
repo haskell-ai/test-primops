@@ -84,12 +84,14 @@ instance KnownWidth width => Arbitrary (Expr width) where
         shrinkUnOp op a =
             [ op (ELit $ interpret a)
             , ELit $ interpret (op a)
-            ]
+            ] ++
+            [ op a' | a' <- shrink a ]
         shrinkBinOp op a b =
             [ op (ELit $ interpret a) b
             , op a (ELit $ interpret b)
             , ELit $ interpret (op a b)
-            ]
+            ] ++
+            [ op a' b' | (a', b') <- shrink (a, b) ]
 
 genExpr :: forall width. (KnownWidth width) 
         => Gen (Expr width)
@@ -137,6 +139,7 @@ instance Show SomeExpr where
 
 instance Arbitrary SomeExpr where
     arbitrary = withArbitraryWidth arbitrary
+
 withArbitraryWidth
     :: (forall width. KnownWidth width => Gen (Expr width))
     -> Gen SomeExpr

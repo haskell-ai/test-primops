@@ -9,10 +9,15 @@ import Expr
 import ToCmm
 
 prop :: KnownWidth width => Expr width -> Property
-prop e =
-    ioProperty $ do
-        r <- evalGhc e
-        return $ getNumber (interpret e) === r
+prop e = interpreterConverges e .&. ghcAgrees e
+
+interpreterConverges :: KnownWidth width => Expr width -> Property
+interpreterConverges e = property $ interpret e `seq` True
+
+ghcAgrees :: KnownWidth width => Expr width -> Property
+ghcAgrees e = ioProperty $ do
+    r <- evalGhc e
+    return $ getNumber (interpret e) === r
 
 main :: IO ()
 main = quickCheck (prop @W64)
