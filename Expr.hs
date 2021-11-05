@@ -121,7 +121,6 @@ genExpr' width = sized gen
             ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
 
     smallLit = ELit <$> chooseNumber (0, 96)
-    w = knownWidth @width
     subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
 
