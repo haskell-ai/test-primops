@@ -17,6 +17,11 @@ instance Show (Number width) where
 getNumber :: Number width -> Integer
 getNumber (Number n) = n
 
+chooseNumber :: (KnownWidth width)
+             => (Number width, Number width) -> Gen (Number width)
+chooseNumber (Number a, Number b) =
+    mkNumber <$> chooseInteger (a, b)
+
 mkNumber :: forall width. (KnownWidth width)
          => Integer -> Number width
 mkNumber n = Number $ truncate (knownWidth @width) n

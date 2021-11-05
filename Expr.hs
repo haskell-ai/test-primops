@@ -107,7 +107,7 @@ genExpr' width = sized gen
             , binary ESub
             , binary EAnd
             , binary EOr
-            , EShl <$> arbitrary <*> resize 4 arbitrary
+            , EShl <$> arbitrary <*> smallLit -- Avoid memory blowup
             , EShr <$> arbitrary <*> arbitrary
             , ENot <$> arbitrary
             , ENegate <$> arbitrary
@@ -124,6 +124,7 @@ genExpr' width = sized gen
                , EZeroExt <$> genExpr @W64
                ]
 
+    smallLit = ELit <$> chooseNumber (0, 96)
     w = knownWidth @width
     subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
