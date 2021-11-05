@@ -46,8 +46,8 @@ showExpr e =
     case e of
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
-      EAnd    a b -> binOp "-" a b
-      EOr     a b -> binOp "-" a b
+      EAnd    a b -> binOp "&" a b
+      EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> showExpr a
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
