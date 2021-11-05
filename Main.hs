@@ -10,10 +10,9 @@ import ToCmm
 
 type WordSize = W64
 
-prop :: Property
-prop = property $ do
-    SomeExpr e <- withArbitraryWidth genExpr
-    return $ ioProperty $ do
+prop :: SomeExpr -> Property
+prop (SomeExpr e) =
+    ioProperty $ do
         r <- evalGhc e
         return $ getNumber (interpret e) === r
 
