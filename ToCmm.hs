@@ -106,7 +106,7 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
-    let ghcArgs = ["-O0"]
+    let ghcArgs = ["-O0", "-dcmm-lint"]
     runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ [hsSrc, cmmSrc, "-o", exeName])
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
@@ -124,7 +124,7 @@ evalGhcDyn :: forall width. (KnownWidth width) => Expr width -> IO Natural
 evalGhcDyn e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
-    let ghcArgs = ["-O0", "-package-env", "-"]
+    let ghcArgs = ["-O0", "-package-env", "-", "-dcmm-lint"]
     runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ ["-shared", "-o", soName, cmmSrc])
     out <- readProcess runnerName [tmpDir </> soName] ""
     return $ read out
