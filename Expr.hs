@@ -115,7 +115,7 @@ genExpr' width = sized gen
                  return $ ENarrow e
             --, do SomeExpr e <- arbitrary 
             --     return $ ESignExt e
-            , do off <- chooseInteger (0, bufferSize)
+            , do off <- chooseInteger (0, bufferSize-1)
                  return $ ELoad $ ELit $ mkNumber off
             ]
             ++ if w == W8 then [] else
