@@ -63,6 +63,10 @@ toCmmExpr e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
+      EDivU   a b -> machOp "%divu"       [toCmmExpr a, toCmmExpr b]
+      ERemU   a b -> machOp "%modu"       [toCmmExpr a, toCmmExpr b]
+      EDivS   a b -> machOp "%rem"        [toCmmExpr a, toCmmExpr b]
+      ERemS   a b -> machOp "%quot"       [toCmmExpr a, toCmmExpr b]
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> toCmmExpr a

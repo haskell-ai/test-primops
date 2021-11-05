@@ -15,6 +15,10 @@ data Expr (width :: Width) where
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
     EMul     :: Expr width -> Expr width -> Expr width
+    EDivU    :: Expr width -> Expr width -> Expr width
+    ERemU    :: Expr width -> Expr width -> Expr width
+    EDivS    :: Expr width -> Expr width -> Expr width
+    ERemS    :: Expr width -> Expr width -> Expr width
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
@@ -61,6 +65,10 @@ showExpr e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
+      EDivU   a b -> binOp "/u" a b
+      EDivS   a b -> binOp "/s" a b
+      ERemU   a b -> binOp "%u" a b
+      ERemS   a b -> binOp "%s" a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       ENot    a   -> parens $ "~" <> showExpr a
@@ -87,6 +95,10 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EAdd     a b -> shrinkBinOp EAdd a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub a b ++ [ b | interpret a == 0 ]
           EMul     a b -> shrinkBinOp EMul a b ++ [ b | interpret a == 1 ]
+          EDivU    a b -> shrinkDivOp EDivU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          ERemU    a b -> shrinkDivOp ERemU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          EDivS    a b -> shrinkDivOp EDivS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          ERemS    a b -> shrinkDivOp ERemS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           EAnd     a b -> shrinkBinOp EAnd a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
           EOr      a b -> shrinkBinOp EOr  a b ++ [ a | interpret b == 0] ++ [ b | interpret a == 0 ]
           ENot     a   -> shrinkUnOp  ENot a <> [a]
@@ -106,6 +118,12 @@ instance KnownWidth width => Arbitrary (Expr width) where
         shrinkBinOp op a b =
             [ ELit $ interpret (op a b) ] ++
             [ op a' b' | (a', b') <- shrink (a, b) ]
+        shrinkDivOp op a b =
+            [ ELit $ interpret (op a b) ] ++
+            [ op a' b'
+            | (a', b') <- shrink (a, b)
+            , interpret b' /= 0
+            ]
 
 genExpr :: forall width. (KnownWidth width) 
         => Gen (Expr width)
@@ -122,6 +140,10 @@ genExpr' width = sized gen
             , binary EAdd
             , binary ESub
             , binary EMul
+            , divOp EDivU
+            , divOp ERemU
+            , divOp EDivS
+            , divOp ERemS
             , binary EAnd
             , binary EOr
             -- N.B. C--'s shift primops are undefined with shifts outside of
@@ -142,6 +164,8 @@ genExpr' width = sized gen
     arbitraryShift = ELit <$> chooseNumber (0, 64-1)
     subexpr2 = scale (`div` 2) . genExpr'
     binary f = f <$> subexpr2 width <*> subexpr2 width
+    divOp f = f <$> subexpr2 width <*> nonzero (subexpr2 width)
+    nonzero = flip suchThat $ \x -> interpret x /= 0
 
 -- * SomeExpr
 
@@ -172,6 +196,10 @@ interpret :: forall width. (KnownWidth width)
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
 interpret (EMul a b)   = interpret a * interpret b
+interpret (EDivS a b)  = interpret a `divS` interpret b
+interpret (ERemS a b)  = interpret a `remS` interpret b
+interpret (EDivU a b)  = interpret a `divU` interpret b
+interpret (ERemU a b)  = interpret a `remU` interpret b
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
 interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)

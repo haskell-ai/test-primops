@@ -2,15 +2,17 @@
 -- "bit-pattern".
 module Number
     ( Number
+    , fromSigned
     , getNumber
     , chooseNumber
-    , mkNumber
+    , mkNumber, mkNumberC
     , n8, n16, n32, n64
     , ones
     , truncateNumber
     , signExtNumber
     , zeroExtNumber
     , shiftRa, shiftRl
+    , divU, divS, remU, remS
     ) where
 
 import Data.Bits
@@ -30,14 +32,43 @@ instance Show (Number width) where
 getNumber :: Number width -> Natural
 getNumber (Number n) = n
 
+toSigned :: forall width. (KnownWidth width)
+         => Number width -> Integer
+toSigned n
+  | n `testBit` signBit = negate $ toInteger $ getNumber $ twosComplement n
+  | otherwise           = toInteger $ getNumber n
+  where
+    signBit = widthBits (knownWidth @width) - 1
+
 chooseNumber :: (KnownWidth width)
              => (Number width, Number width) -> Gen (Number width)
 chooseNumber (Number a, Number b) =
     mkNumber . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
 
+fromSigned :: forall width. (KnownWidth width)
+           => Integer -> Number width
+fromSigned n
+  | n < negate b
+              = error "fromSigned: underflow"
+  | n > b     = error "fromSigned: overflow"
+  | n < 0     = Number $ fromIntegral $ (1 `shiftL` w) + n
+  | otherwise = Number $ fromIntegral n
+  where
+    w = widthBits (knownWidth @width)
+    b = 2^(w-1) - 1
+
 mkNumber :: forall width. (KnownWidth width)
          => Natural -> Number width
 mkNumber n = Number $ truncate (knownWidth @width) n
+
+-- | Checked.
+mkNumberC :: forall width. (KnownWidth width)
+          => Natural -> Number width
+mkNumberC n
+  | n == n'   = Number n'
+  | otherwise = error "mkNumberC: out of range"
+  where
+    n' = truncate (knownWidth @width) n
 
 n8 :: Natural -> Number W8
 n8 = mkNumber
@@ -75,6 +106,9 @@ instance (KnownWidth width) => Num (Number width) where
     signum _ = 1
     abs = id
     fromInteger = mkNumber . fromIntegral
+
+instance (KnownWidth width) => Real (Number width) where
+    toRational (Number n) = toRational n
 
 instance (KnownWidth width) => Bits (Number width) where
     (.&.) = liftBinOp (.&.)
@@ -160,3 +194,11 @@ shiftRl
 shiftRl n s
   | s < 0     = error "negative shift"
   | otherwise = shiftR n s
+
+divU, divS, remU, remS
+    :: forall width. (KnownWidth width)
+    => Number width -> Number width -> Number width
+divU a b = mkNumberC $ getNumber a `quot` getNumber b
+divS a b = fromSigned $ toSigned a `quot` toSigned b
+remU a b = mkNumberC $ getNumber a `rem` getNumber b
+remS a b = fromSigned $ toSigned a `rem` toSigned b
