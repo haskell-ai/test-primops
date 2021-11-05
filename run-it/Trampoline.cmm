@@ -1,0 +1,5 @@
+#include "Cmm.h"
+
+stg_trampoline(W_ fun, W_ buffer) {
+    jump fun(buffer);
+}

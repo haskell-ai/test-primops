@@ -1,6 +1,7 @@
 module ToCmm
     ( createBufferFile
     , evalGhc
+    , evalGhcDyn
     , toCmmDecl
     , toCmmExpr
     ) where
@@ -119,3 +120,20 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
     exeName = "Test"
     cmmSrc = "test-cmm.cmm"
     hsSrc = "test-hs.hs"
+
+evalGhcDyn :: forall width. (KnownWidth width) => Expr width -> IO Natural
+evalGhcDyn e = withTempDirectory "." "tmp" $ \tmpDir -> do
+    writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
+    let inTmp c = c { cwd = Just tmpDir }
+    let ghcArgs = ["-O0", "-package-env", "-"]
+    runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ ["-shared", "-o", soName, cmmSrc])
+    out <- readProcess runnerName [tmpDir </> soName] ""
+    return $ read out
+  where
+    runnerName = "run-it"
+    runProcess' p = do
+        (_, _, _, hdl) <- createProcess p
+        ExitSuccess <- waitForProcess hdl
+        return ()
+    soName = "Test.so"
+    cmmSrc = "test-cmm.cmm"

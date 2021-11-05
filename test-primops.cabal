@@ -14,6 +14,7 @@ executable test-primops
                       temporary,
                       filepath,
                       QuickCheck
+    build-tool-depends: run-it:run-it
     ghc-options:      -Wall -Wno-unticked-promoted-constructors
     default-extensions:
         ViewPatterns
@@ -27,3 +28,4 @@ executable test-primops
         ScopedTypeVariables
         AllowAmbiguousTypes
     default-language: Haskell2010
+

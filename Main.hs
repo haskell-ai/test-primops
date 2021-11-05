@@ -16,7 +16,7 @@ interpreterConverges e = property $ interpret e `seq` True
 
 ghcAgrees :: KnownWidth width => Expr width -> Property
 ghcAgrees e = ioProperty $ do
-    r <- evalGhc e
+    r <- evalGhcDyn e
     return $ getNumber (interpret e) === r
 
 main :: IO ()
