@@ -174,10 +174,10 @@ bufferSize :: Integer
 bufferSize = 1 `shiftL` 22
 
 validOffset :: Integer -> Bool
-validOffset off = off > 0 && off < bufferSize
+validOffset off = off >= 0 && off < bufferSize
 
 load :: KnownWidth width => Integer -> Number width
 load off
-  | not (validOffset off) = error "invalid offset"
+  | not (validOffset off) = error $ "invalid offset " <> show off
   | otherwise             = 0
     
