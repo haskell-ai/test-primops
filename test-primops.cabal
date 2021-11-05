@@ -1,0 +1,24 @@
+cabal-version:      2.4
+name:               test-primops
+version:            0.1.0.0
+author:             Ben Gamari
+maintainer:         ben@smart-cactus.org
+copyright:          (c) 2021 Ben Gamari
+
+executable test-primops
+    main-is:          Main.hs
+    other-modules:    Width, Number, Expr
+    build-depends:    base ^>=4.14.3.0,
+                      QuickCheck
+    ghc-options:      -Wall -Wno-unticked-promoted-constructors
+    default-extensions:
+        ViewPatterns
+        GADTs
+        TypeInType
+        DataKinds
+        RankNTypes
+        MultiParamTypeClasses
+        TypeApplications
+        ScopedTypeVariables
+        AllowAmbiguousTypes
+    default-language: Haskell2010
