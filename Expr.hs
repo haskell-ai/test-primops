@@ -74,10 +74,10 @@ instance KnownWidth width => Arbitrary (Expr width) where
           ESub     a b -> shrinkBinOp ESub a b
           EAnd     a b -> shrinkBinOp EAnd a b
           EOr      a b -> shrinkBinOp EOr  a b
-          ENot     a   -> shrinkUnOp  ENot a
+          ENot     a   -> shrinkUnOp  ENot a <> [a]
           EShl     a b -> shrinkBinOp EShl a b
           EShr     a b -> shrinkBinOp EShr a b
-          ENegate  a   -> shrinkUnOp  ENegate a
+          ENegate  a   -> shrinkUnOp  ENegate a <> [a]
           ENarrow  a   -> shrinkUnOp  ENarrow a
           ESignExt a   -> shrinkUnOp  ESignExt a
           EZeroExt a   -> shrinkUnOp  EZeroExt a
