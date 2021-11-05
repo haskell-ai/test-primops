@@ -7,8 +7,12 @@ copyright:          (c) 2021 Ben Gamari
 
 executable test-primops
     main-is:          Main.hs
-    other-modules:    Width, Number, Expr
+    other-modules:    Width, Number, Expr, ToCmm
     build-depends:    base ^>=4.14.3.0,
+                      directory,
+                      process,
+                      temporary,
+                      filepath,
                       QuickCheck
     ghc-options:      -Wall -Wno-unticked-promoted-constructors
     default-extensions:
