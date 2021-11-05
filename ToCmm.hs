@@ -1,8 +1,22 @@
 module ToCmm where
 
+import System.Exit
+import System.Process
+import System.IO.Temp
+import System.FilePath
+
 import Width
 import Number
 import Expr
+
+ghcPath :: FilePath
+ghcPath = "ghc"
+
+hsType :: Width -> String
+hsType W8  = "Word8#"
+hsType W16 = "Word16#"
+hsType W32 = "Word32#"
+hsType W64 = "Word64#"
 
 cmmType :: Width -> String
 cmmType W8  = "bits8"
@@ -21,6 +35,11 @@ toCmmDecl name e = unlines
     , "}"
     ]
 
+narrowOp, zeroExtOp, signExtOp :: Width -> String
+narrowOp w = "%lobits" <> show (widthBits w)
+zeroExtOp w = "%zx" <> show (widthBits w)
+signExtOp w = "%sx" <> show (widthBits w)
+
 toCmmExpr :: forall width. KnownWidth width => Expr width -> String
 toCmmExpr e =
     case e of
@@ -32,10 +51,37 @@ toCmmExpr e =
       EShl    a b -> binOp "<<" a b
       EShr    a b -> binOp ">>" a b
       ENegate a   -> parens $ "-" <> showExpr a
-      ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "> ", showExpr a]
-      ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "> ", showExpr a]
-      EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "> ", showExpr a]
+      ENarrow (a :: Expr wide)    -> narrowOp  (knownWidth @width) <> parens (showExpr a)
+      ESignExt (a :: Expr narrow) -> signExtOp (knownWidth @width) <> parens (showExpr a)
+      EZeroExt (a :: Expr narrow) -> zeroExtOp (knownWidth @width) <> parens (showExpr a)
       ELit n -> parens $ unwords [show (getNumber n), "::", cmmType (knownWidth @width)]
   where
     binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
     parens s = concat ["(", s, ")"]
+
+evalGhc :: KnownWidth width => Expr width -> IO Integer
+evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
+    writeFile (tmpDir </> hsSrc) $ unlines
+        [ "{-# LANGUAGE GHCForeignImportPrim #-}"
+        , "{-# LANGUAGE UnliftedFFITypes #-}"
+        , "{-# LANGUAGE MagicHash #-}"
+        , "module Main where"
+        , "import Data.Word"
+        , "import GHC.Exts"
+        , "foreign import prim \"test\" test :: Word# -> Word#"
+        , "main :: IO ()"
+        , "main = print (W# (test 0##))"
+        ]
+    writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
+    let inTmp c = c { cwd = Just tmpDir }
+    runProcess $ inTmp (proc ghcPath [hsSrc, cmmSrc, "-v0", "-o", exeName])
+    out <- readProcess (tmpDir </> exeName) [] ""
+    return $ read out
+  where
+    runProcess p = do
+        (_, _, _, hdl) <- createProcess p
+        ExitSuccess <- waitForProcess hdl
+        return ()
+    exeName = "Test"
+    cmmSrc = "test-cmm.cmm"
+    hsSrc = "test-hs.hs"
