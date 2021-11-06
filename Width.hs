@@ -2,6 +2,7 @@
 module Width where
 
 import Data.Bits as Bits
+import Unsafe.Coerce
 import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
@@ -54,6 +55,20 @@ instance WiderThan W32 W16
 instance WiderThan W64 W8
 instance WiderThan W64 W16
 instance WiderThan W64 W32
+
+data WiderThanProof wide narrow where
+    WiderThanProof :: (wide `WiderThan` narrow) => WiderThanProof wide narrow
+
+isWiderThan
+    :: forall wide narrow proxy. (KnownWidth wide, KnownWidth narrow)
+    => proxy wide -> proxy narrow
+    -> Maybe (WiderThanProof wide narrow)
+isWiderThan _ _
+  | wide > narrow = Just (unsafeCoerce $ WiderThanProof @W16 @W8)
+  | otherwise     = Nothing
+  where
+    wide   = knownWidth @wide
+    narrow = knownWidth @narrow
 
 truncate :: (Num a, Bits a) => Width -> a -> a
 truncate w n =

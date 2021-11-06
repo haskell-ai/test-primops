@@ -111,9 +111,9 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
           EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
           ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
-          ENarrow  a   -> shrinkUnOp  ENarrow a
-          ESignExt a   -> shrinkUnOp  ESignExt a
-          EZeroExt a   -> shrinkUnOp  EZeroExt a
+          ENarrow  a   -> shrinkUnOp  ENarrow a  ++ [ ENarrow b | ENarrow b <- pure a, Just WiderThanProof <- pure $ b `isWiderThan` e ]
+          ESignExt a   -> shrinkUnOp  ESignExt a ++ [ ESignExt b | ESignExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
+          EZeroExt a   -> shrinkUnOp  EZeroExt a ++ [ EZeroExt b | EZeroExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
           ELoad    a   -> shrinkUnOp  ELoad a
           ELit     a   -> map ELit (shrink a)
       where
