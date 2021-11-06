@@ -94,20 +94,20 @@ instance KnownWidth width => Arbitrary (Expr width) where
     arbitrary = genExpr
     shrink e =
         case e of
-          EAdd     a b -> shrinkBinOp EAdd a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          ESub     a b -> shrinkBinOp ESub a b ++ [ a | interpret b == 0 ]
-          EMul     a b -> shrinkBinOp EMul a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
+          EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
+          ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
+          EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
           EDivU    a b -> shrinkDivOp EDivU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERemU    a b -> shrinkDivOp ERemU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           EDivS    a b -> shrinkDivOp EDivS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERemS    a b -> shrinkDivOp ERemS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          EAnd     a b -> shrinkBinOp EAnd a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
-          EOr      a b -> shrinkBinOp EOr  a b ++ [ a | interpret b == 0] ++ [ b | interpret a == 0 ]
-          ENot     a   -> shrinkUnOp  ENot a <> [a]
-          EShl     a b -> shrinkBinOp EShl a b ++ [ a | interpret b == 0 ]
+          EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
+          EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0] ++ [ b | interpret a == 0 ]
+          ENot     a   -> shrinkUnOp  ENot  a   ++ [a]
+          EShl     a b -> shrinkBinOp EShl  a b ++ [ a | interpret b == 0 ]
           EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
           EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
-          ENegate  a   -> shrinkUnOp  ENegate a <> [a]
+          ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
           ENarrow  a   -> shrinkUnOp  ENarrow a
           ESignExt a   -> shrinkUnOp  ESignExt a
           EZeroExt a   -> shrinkUnOp  EZeroExt a
@@ -142,10 +142,10 @@ genExpr' width = sized gen
             , binary EAdd
             , binary ESub
             , binary EMul
-            , divOp EDivU
-            , divOp ERemU
-            , divOp EDivS
-            , divOp ERemS
+            , divOp  EDivU
+            , divOp  ERemU
+            , divOp  EDivS
+            , divOp  ERemS
             , binary EAnd
             , binary EOr
             -- N.B. C--'s shift primops are undefined with shifts outside of
