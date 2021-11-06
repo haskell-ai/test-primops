@@ -86,3 +86,14 @@ truncate :: (Num a, Bits a) => Width -> a -> a
 truncate w n =
     n .&. ((1 `shiftL` widthBits w) - 1)
 
+data SomeWidth where
+    SomeWidth :: forall width. (KnownWidth width) => Proxy width -> SomeWidth
+
+allWidths :: [SomeWidth]
+allWidths =
+    [ SomeWidth (Proxy @W8)
+    , SomeWidth (Proxy @W16)
+    , SomeWidth (Proxy @W32)
+    , SomeWidth (Proxy @W64)
+    ]
+

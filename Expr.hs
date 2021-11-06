@@ -1,12 +1,20 @@
 -- | Expressions
 module Expr
-    ( RelationalOp(..)
+    ( -- * Relational operators
+      RelationalOp(..)
+    , allRelationalOps
+    , relationalOpString
+      -- * Expressoins
     , Expr(..), SomeExpr(..)
+      -- ** Convenient helpers
+    , l8, l16, l32, l64
+      -- * Showing
     , showExpr
     , showInterpretedExpr
     , exprToTree
+      -- ** Generating
     , genExpr
-    , l8, l16, l32, l64
+      -- ** Interpreting
     , buffer, load
     , interpret
     ) where
@@ -33,6 +41,28 @@ data RelationalOp
     | RGE Signedness
     | RLT Signedness
     | RLE Signedness
+    deriving (Eq, Ord, Show, Read)
+
+allRelationalOps :: [RelationalOp]
+allRelationalOps = concat
+    [ [ REq, RNEq]
+    , signed RGT
+    , signed RGE
+    , signed RLT
+    , signed RLE
+    ]
+  where
+    signed f = [f Signed, f Unsigned]
+
+relationalOpString :: RelationalOp -> String
+relationalOpString op =
+    case op of
+      REq    -> "=="
+      RNEq   -> "!="
+      RGT  s -> ">"  ++ signednessTag s
+      RGE  s -> ">=" ++ signednessTag s
+      RLT  s -> "<"  ++ signednessTag s
+      RLE  s -> "<=" ++ signednessTag s
 
 instance Arbitrary RelationalOp where
     arbitrary = oneof
@@ -63,11 +93,11 @@ data Expr (width :: Width) where
 
     ENegate  :: Expr width -> Expr width
 
-    ENarrow  :: (KnownWidth wide, wide `WiderThan` narrow)
+    ENarrow  :: forall wide narrow. (KnownWidth wide, wide `WiderThan` narrow)
              => Expr wide -> Expr narrow
-    ESignExt :: (KnownWidth narrow, wide `WiderThan` narrow)
+    ESignExt :: forall narrow wide. (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
-    EZeroExt :: (KnownWidth narrow, wide `WiderThan` narrow)
+    EZeroExt :: forall narrow wide. (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
 
     ELoad    :: Expr W64 -> Expr width
@@ -324,7 +354,7 @@ exprToTree
     -> Tree (String, a)
 exprToTree f e =
     case e of
-      ERel op a b -> binOp (relOp op) a b
+      ERel op a b -> binOp (relationalOpString op) a b
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
@@ -333,7 +363,7 @@ exprToTree f e =
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       EXOr    a b -> binOp "^" a b
-      ENot    a   -> unOp "~" a
+      ENot    a   -> unOp  "~" a
       EShl    a b -> binOp "<<" a b
       EShrl   a b -> binOp ">>l" a b
       EShra   a b -> binOp ">>a" a b
@@ -352,16 +382,6 @@ exprToTree f e =
          => String -> Expr w1 -> Tree (String, a)
     unOp op a = Node (op, f e) [exprToTree f a]
     leaf s = Node (s, f e) []
-
-    relOp :: RelationalOp -> String
-    relOp op =
-        case op of
-          REq    -> "=="
-          RNEq   -> "!="
-          RGT  s -> ">"  ++ signednessTag s
-          RGE  s -> ">=" ++ signednessTag s
-          RLT  s -> "<"  ++ signednessTag s
-          RLE  s -> "<=" ++ signednessTag s
 
 showParenTree :: Tree String -> String
 showParenTree (Node lbl [a, b]) =

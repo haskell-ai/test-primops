@@ -28,6 +28,7 @@ import Prelude hiding (truncate)
 import Width
 
 data Signedness = Signed | Unsigned
+    deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 signednessTag :: Signedness -> String
 signednessTag Signed   = "s"
