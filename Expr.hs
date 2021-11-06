@@ -358,13 +358,10 @@ exprToTree f e =
         case op of
           REq    -> "=="
           RNEq   -> "!="
-          RGT  s -> signed s ">"
-          RGE  s -> signed s ">="
-          RLT  s -> signed s "<"
-          RLE  s -> signed s "<="
-      where
-        signed Signed = (++"s")
-        signed Unsigned = (++"u")
+          RGT  s -> ">"  ++ signednessTag s
+          RGE  s -> ">=" ++ signednessTag s
+          RLT  s -> "<"  ++ signednessTag s
+          RLE  s -> "<=" ++ signednessTag s
 
 showParenTree :: Tree String -> String
 showParenTree (Node lbl [a, b]) =
