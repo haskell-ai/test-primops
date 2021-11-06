@@ -61,6 +61,8 @@ machOp op args = op <> parens (intercalate "," args)
 toCmmExpr :: forall width. KnownWidth width => Expr width -> String
 toCmmExpr e =
     case e of
+      EEq     a b -> binOp "==" a b
+      ENeq    a b -> binOp "!=" a b
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b

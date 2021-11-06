@@ -15,6 +15,9 @@ import Width
 import Number
 
 data Expr (width :: Width) where
+    EEq      :: (KnownWidth width) => Expr width -> Expr width -> Expr WordSize
+    ENeq     :: (KnownWidth width) => Expr width -> Expr width -> Expr WordSize
+
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
     EMul     :: Expr width -> Expr width -> Expr width
@@ -22,6 +25,7 @@ data Expr (width :: Width) where
     ERemU    :: Expr width -> Expr width -> Expr width
     EDivS    :: Expr width -> Expr width -> Expr width
     ERemS    :: Expr width -> Expr width -> Expr width
+
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
     EXOr     :: Expr width -> Expr width -> Expr width
@@ -29,13 +33,16 @@ data Expr (width :: Width) where
     EShl     :: Expr width -> Expr WordSize -> Expr width
     EShrl    :: Expr width -> Expr WordSize -> Expr width
     EShra    :: Expr width -> Expr WordSize -> Expr width
+
     ENegate  :: Expr width -> Expr width
+
     ENarrow  :: (KnownWidth wide, wide `WiderThan` narrow)
              => Expr wide -> Expr narrow
     ESignExt :: (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
     EZeroExt :: (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
+
     ELoad    :: Expr W64 -> Expr width
     ELit     :: Number width -> Expr width
 
@@ -66,6 +73,8 @@ showExpr :: forall width. (KnownWidth width)
          => Expr width -> String
 showExpr e =
     case e of
+      EEq     a b -> binOp "==" a b
+      ENeq    a b -> binOp "/=" a b
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
@@ -97,6 +106,9 @@ instance KnownWidth width => Arbitrary (Expr width) where
     arbitrary = genExpr
     shrink e =
         case e of
+          EEq      a b -> shrinkBinOp EEq   a b
+          ENeq     a b -> shrinkBinOp ENeq  a b
+
           EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
           EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
@@ -112,9 +124,14 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
           EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
           ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
-          ENarrow  a   -> shrinkUnOp  ENarrow a  ++ [ ENarrow b | ENarrow b <- pure a, Just WiderThanProof <- pure $ b `isWiderThan` e ] ++ [ b | EZeroExt b <- pure a, Just Refl <- pure $ e `isSameWidth` b ]
-          ESignExt a   -> shrinkUnOp  ESignExt a ++ [ ESignExt b | ESignExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ] ++ [ EZeroExt a ]
-          EZeroExt a   -> shrinkUnOp  EZeroExt a ++ [ EZeroExt b | EZeroExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
+          ENarrow  a   -> shrinkUnOp  ENarrow a
+                          ++ [ ENarrow b | ENarrow b <- pure a, Just WiderThanProof <- pure $ b `isWiderThan` e ]
+                          ++ [ b | EZeroExt b <- pure a, Just Refl <- pure $ e `isSameWidth` b ]
+          ESignExt a   -> shrinkUnOp  ESignExt a
+                          ++ [ ESignExt b | ESignExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
+                          ++ [ EZeroExt a ]
+          EZeroExt a   -> shrinkUnOp  EZeroExt a
+                          ++ [ EZeroExt b | EZeroExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
           ELoad    a   -> shrinkUnOp  ELoad a
           ELit     a   -> map ELit (shrink a)
       where
@@ -139,20 +156,21 @@ genExpr' :: forall width. (KnownWidth width)
          => Proxy width -> Gen (Expr width)
 genExpr' width = sized gen
   where
+    gen :: Int -> Gen (Expr width)
     gen 0 = ELit <$> arbitrary
     gen _ = do
         oneof $
             [ ELit <$> arbitrary
-            , binary EAdd
-            , binary ESub
-            , binary EMul
+            , binOp EAdd
+            , binOp ESub
+            , binOp EMul
             , divOp  EDivU
             , divOp  ERemU
             , divOp  EDivS
             , divOp  ERemS
-            , binary EAnd
-            , binary EOr
-            , binary EXOr
+            , binOp EAnd
+            , binOp EOr
+            , binOp EXOr
             -- N.B. C--'s shift primops are undefined with shifts outside of
             -- [0,WORD_SIZE).
             , EShl <$> arbitrary <*> arbitraryShift
@@ -167,12 +185,20 @@ genExpr' width = sized gen
             ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
             ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
             ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
+            ++ wordSizeGens
 
     arbitraryShift = ELit <$> chooseNumber (0, 64-1)
-    subexpr2 = scale (`div` 2) . genExpr'
-    binary f = f <$> subexpr2 width <*> subexpr2 width
-    divOp f = f <$> subexpr2 width <*> nonzero (subexpr2 width)
+    subexpr2 = scale (`div` 2) genExpr
+    binOp f = f <$> subexpr2 <*> subexpr2
+    divOp f = f <$> subexpr2 <*> nonzero subexpr2
     nonzero = flip suchThat $ \x -> interpret x /= 0
+    wordSizeGens :: [Gen (Expr width)]
+    wordSizeGens
+      | Just Refl <- Proxy @width `isSameWidth` Proxy @WordSize
+      = [ binOp EEq
+        , binOp ENeq
+        ]
+      | otherwise = []
 
 -- * SomeExpr
 
@@ -198,8 +224,14 @@ withArbitraryWidth f =
 
 -- * Interpreter
 
+boolVal :: Bool -> Number WordSize
+boolVal True  = 1
+boolVal False = 0
+
 interpret :: forall width. (KnownWidth width)
           => Expr width -> Number width
+interpret (EEq  a b)   = boolVal $ interpret a == interpret b
+interpret (ENeq a b)   = boolVal $ interpret a /= interpret b
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
 interpret (EMul a b)   = interpret a * interpret b
