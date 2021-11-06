@@ -1,3 +1,1 @@
-packages:
-  .
-  ./run-it
+packages: ., ./run-it
