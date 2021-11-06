@@ -50,6 +50,7 @@ instance KnownWidth width => Num (Expr width) where
     (+) = EAdd
     (-) = ESub
     (*) = EMul
+    signum = error "Expr(signum)"
     negate = ENegate
     abs = id
     fromInteger = ELit . fromInteger
@@ -154,51 +155,74 @@ genExpr = genExpr' (Proxy @width)
 
 genExpr' :: forall width. (KnownWidth width) 
          => Proxy width -> Gen (Expr width)
-genExpr' width = sized gen
+genExpr' _width = sized gen
   where
     gen :: Int -> Gen (Expr width)
-    gen 0 = ELit <$> arbitrary
+    gen 0 = litGen
     gen _ = do
         oneof $
-            [ ELit <$> arbitrary
-            , binOp EAdd
-            , binOp ESub
-            , binOp EMul
-            , divOp  EDivU
-            , divOp  ERemU
-            , divOp  EDivS
-            , divOp  ERemS
-            , binOp EAnd
-            , binOp EOr
-            , binOp EXOr
-            -- N.B. C--'s shift primops are undefined with shifts outside of
-            -- [0,WORD_SIZE).
-            , EShl <$> arbitrary <*> arbitraryShift
-            , EShrl <$> arbitrary <*> arbitraryShift
-            -- See https://gitlab.haskell.org/ghc/ghc/-/issues/20626
-            -- , EShra <$> arbitrary <*> arbitraryShift
-            , ENot <$> arbitrary
-            , ENegate <$> arbitrary
-            , do off <- chooseNumber (0, fromIntegral bufferSize-1)
-                 return $ ELoad $ ELit off
+            [ litGen
+            , loadGen
             ]
+            ++ arithmeticGens
+            ++ bitwiseGens
+            ++ shiftGens
             ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
             ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
             ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
-            ++ wordSizeGens
+            ++ relationalGens
+
+    litGen :: Gen (Expr width)
+    litGen = ELit <$> arbitrary
+
+    loadGen :: Gen (Expr width)
+    loadGen = do
+        off <- chooseNumber (0, fromIntegral bufferSize-1)
+        return $ ELoad $ ELit off
+
+    arithmeticGens :: [Gen (Expr width)]
+    arithmeticGens =
+        [ binOp EAdd
+        , binOp ESub
+        , binOp EMul
+        , divOp EDivU
+        , divOp ERemU
+        , divOp EDivS
+        , divOp ERemS
+        , ENegate <$> arbitrary
+        ]
+
+    bitwiseGens :: [Gen (Expr width)]
+    bitwiseGens =
+        [ ENot <$> arbitrary
+        , binOp EAnd
+        , binOp EOr
+        , binOp EXOr
+        ]
+
+    shiftGens :: [Gen (Expr width)]
+    shiftGens =
+        [ -- N.B. C--'s shift primops are undefined with shifts outside of
+          -- [0,WORD_SIZE).
+          EShl <$> arbitrary <*> arbitraryShift
+        , EShrl <$> arbitrary <*> arbitraryShift
+          -- See https://gitlab.haskell.org/ghc/ghc/-/issues/20626
+        --, EShra <$> arbitrary <*> arbitraryShift
+        ]
+
+    relationalGens :: [Gen (Expr width)]
+    relationalGens
+      | Just Refl <- Proxy @width `isSameWidth` Proxy @WordSize
+      = [ binOp EEq
+        , binOp ENeq
+        ]
+      | otherwise = []
 
     arbitraryShift = ELit <$> chooseNumber (0, 64-1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
     divOp f = f <$> subexpr2 <*> nonzero subexpr2
     nonzero = flip suchThat $ \x -> interpret x /= 0
-    wordSizeGens :: [Gen (Expr width)]
-    wordSizeGens
-      | Just Refl <- Proxy @width `isSameWidth` Proxy @WordSize
-      = [ binOp EEq
-        , binOp ENeq
-        ]
-      | otherwise = []
 
 -- * SomeExpr
 
@@ -257,7 +281,7 @@ bufferSize :: Natural
 bufferSize = 1 `shiftL` 22
 
 buffer :: BS.ByteString
-buffer = BS.pack $ take (fromIntegral bufferSize) [ fromIntegral i | i <- [0..] ]
+buffer = BS.pack $ take (fromIntegral bufferSize) [ fromIntegral i | i <- [(0 :: Int) ..] ]
 
 validOffset :: Natural -> Bool
 validOffset off = off < bufferSize
