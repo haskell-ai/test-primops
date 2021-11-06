@@ -327,7 +327,13 @@ exprToTree f e =
 
 showParenTree :: Tree String -> String
 showParenTree (Node lbl [a, b]) =
-    unwords [parens $ showParenTree a, lbl, parens $ showParenTree b]
+    unwords [showWithParens a, lbl, showWithParens b]
+  where
+    showWithParens x
+      | isLeaf x  = showParenTree x
+      | otherwise = parens $ showParenTree x
+    isLeaf (Node _ []) = True
+    isLeaf _ = False
 showParenTree (Node lbl []) = lbl
 showParenTree (Node lbl xs) =
     lbl <> parens (intercalate ", " $ map showParenTree xs)
