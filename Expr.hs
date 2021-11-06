@@ -95,7 +95,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
     shrink e =
         case e of
           EAdd     a b -> shrinkBinOp EAdd a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          ESub     a b -> shrinkBinOp ESub a b ++ [ b | interpret a == 0 ]
+          ESub     a b -> shrinkBinOp ESub a b ++ [ a | interpret b == 0 ]
           EMul     a b -> shrinkBinOp EMul a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
           EDivU    a b -> shrinkDivOp EDivU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERemU    a b -> shrinkDivOp ERemU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
