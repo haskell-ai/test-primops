@@ -5,6 +5,7 @@ import Data.Bits as Bits
 import Unsafe.Coerce
 import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
+import Data.Type.Equality
 import Prelude hiding (truncate)
 
 type WordSize = W64
@@ -69,6 +70,17 @@ isWiderThan _ _
   where
     wide   = knownWidth @wide
     narrow = knownWidth @narrow
+
+isSameWidth
+    :: forall a b proxy. (KnownWidth a, KnownWidth b)
+    => proxy a -> proxy b
+    -> Maybe (a :~: b)
+isSameWidth _ _
+  | a == b    = Just (unsafeCoerce $ Refl @W8)
+  | otherwise = Nothing
+  where
+    a = knownWidth @a
+    b = knownWidth @b
 
 truncate :: (Num a, Bits a) => Width -> a -> a
 truncate w n =
