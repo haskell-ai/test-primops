@@ -23,6 +23,7 @@ data Expr (width :: Width) where
     ERemS    :: Expr width -> Expr width -> Expr width
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
+    EXOr     :: Expr width -> Expr width -> Expr width
     ENot     :: Expr width -> Expr width
     EShl     :: Expr width -> Expr WordSize -> Expr width
     EShrl    :: Expr width -> Expr WordSize -> Expr width
@@ -73,6 +74,7 @@ showExpr e =
       ERemS   a b -> binOp "%s" a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
+      EXOr    a b -> binOp "^" a b
       ENot    a   -> parens $ "~" <> showExpr a
       EShl    a b -> binOp "<<" a b
       EShrl   a b -> binOp ">>l" a b
@@ -102,7 +104,8 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EDivS    a b -> shrinkDivOp EDivS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERemS    a b -> shrinkDivOp ERemS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
-          EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0] ++ [ b | interpret a == 0 ]
+          EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
+          EXOr     a b -> shrinkBinOp EXOr  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ENot     a   -> shrinkUnOp  ENot  a   ++ [a]
           EShl     a b -> shrinkBinOp EShl  a b ++ [ a | interpret b == 0 ]
           EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
@@ -148,6 +151,7 @@ genExpr' width = sized gen
             , divOp  ERemS
             , binary EAnd
             , binary EOr
+            , binary EXOr
             -- N.B. C--'s shift primops are undefined with shifts outside of
             -- [0,WORD_SIZE).
             , EShl <$> arbitrary <*> arbitraryShift
@@ -204,6 +208,7 @@ interpret (EDivU a b)  = interpret a `divU` interpret b
 interpret (ERemU a b)  = interpret a `remU` interpret b
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
+interpret (EXOr a b)   = interpret a `xor` interpret b
 interpret (EShl a b)   = interpret a `shiftL` fromIntegral (toUnsigned $ interpret b)
 interpret (EShrl a b)  = interpret a `shiftRl` fromIntegral (toUnsigned $ interpret b)
 interpret (EShra a b)  = interpret a `shiftRa` fromIntegral (toUnsigned $ interpret b)

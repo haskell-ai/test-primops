@@ -70,6 +70,7 @@ toCmmExpr e =
       ERemS   a b -> machOp "%rem"        [toCmmExpr a, toCmmExpr b]
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
+      EXOr    a b -> binOp "^" a b
       ENot    a   -> parens $ "~" <> toCmmExpr a
       EShl    a b -> machOp "%shl"        [toCmmExpr a, toCmmExpr b]
       EShrl   a b -> machOp "%shrl"       [toCmmExpr a, toCmmExpr b]
