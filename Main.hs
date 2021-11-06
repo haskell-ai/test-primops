@@ -47,19 +47,19 @@ agree interp1 interp2 e = ioProperty $ do
     r2 <- interp2 e
     return $ r1 === r2
 
-divModProp :: (KnownWidth width)
+quotRemProp :: (KnownWidth width)
            => Interpreter WordSize
            -> Signedness
            -> Number width            -- ^ dividend
            -> NonZero (Number width)  -- ^ divisor
            -> Property
-divModProp interp s a (NonZero b) = ioProperty $ do
+quotRemProp interp s a (NonZero b) = ioProperty $ do
     r <- interp (ERel REq x rhs)
     return $ r === 1
   where
     x = ELit a
     y = ELit b
-    rhs = ((EDiv s x y) * y) + ERem s x y
+    rhs = ((EQuot s x y) * y) + ERem s x y
 
 run :: forall width. (KnownWidth width) => IO Result
 run = do

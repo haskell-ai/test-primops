@@ -35,8 +35,8 @@ operators =
     , binOp "-"  ESub
     , binOp "*"  EMul
     ] ++
-    [ binOp "/s" (EDiv Signed)
-    , binOp "/u" (EDiv Unsigned)
+    [ binOp "/s" (EQuot Signed)
+    , binOp "/u" (EQuot Unsigned)
     , binOp "%s" (ERem Signed)
     , binOp "%u" (ERem Unsigned)
     ] ++

@@ -78,7 +78,7 @@ toCmmExpr e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
-      EDiv  s a b -> machOp (divOp s)     [toCmmExpr a, toCmmExpr b]
+      EQuot s a b -> machOp (quotOp s)    [toCmmExpr a, toCmmExpr b]
       ERem  s a b -> machOp (remOp s)     [toCmmExpr a, toCmmExpr b]
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
@@ -96,8 +96,8 @@ toCmmExpr e =
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
     w = knownWidth @width
-    divOp Unsigned = "%divu"
-    divOp Signed   = "%quot"
+    quotOp Unsigned = "%divu"
+    quotOp Signed   = "%quot"
     remOp Unsigned = "%modu"
     remOp Signed   = "%rem"
 

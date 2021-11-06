@@ -80,7 +80,9 @@ data Expr (width :: Width) where
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
     EMul     :: Expr width -> Expr width -> Expr width
-    EDiv     :: Signedness -> Expr width -> Expr width -> Expr width
+    -- | Division rounding towards zero.
+    EQuot    :: Signedness -> Expr width -> Expr width -> Expr width
+    -- | @(x `quot` y)*y + (x `rem` y) == x@
     ERem     :: Signedness -> Expr width -> Expr width -> Expr width
 
     EAnd     :: Expr width -> Expr width -> Expr width
@@ -138,7 +140,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
           EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
-          EDiv   s a b -> shrinkDivOp (EDiv s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          EQuot  s a b -> shrinkDivOp (EQuot s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERem   s a b -> shrinkDivOp (ERem s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
           EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
@@ -208,7 +210,7 @@ genExpr' _width = sized gen
         [ binOp EAdd
         , binOp ESub
         , binOp EMul
-        , divOp EDiv
+        , divOp EQuot
         , divOp ERem
         , ENegate <$> arbitrary
         ]
@@ -302,7 +304,7 @@ interpret (ERel o a b) = boolVal $ interpretRelOp o (interpret a) (interpret b)
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
 interpret (EMul a b)   = interpret a * interpret b
-interpret (EDiv s a b) = divNumber s (interpret a) (interpret b)
+interpret (EQuot s a b) = divNumber s (interpret a) (interpret b)
 interpret (ERem s a b) = remNumber s (interpret a) (interpret b)
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
@@ -358,7 +360,7 @@ exprToTree f e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
-      EDiv  s a b -> binOp ("/"++signednessTag s) a b
+      EQuot s a b -> binOp ("/"++signednessTag s) a b
       ERem  s a b -> binOp ("%"++signednessTag s) a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
