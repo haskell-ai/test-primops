@@ -46,24 +46,28 @@ instance Show (Number width) where
       | n < 10    = shows n
       | otherwise = showString "0x" . showHex n
 
+-- | Interpret a bit pattern as an unsigned number.
 toUnsigned :: Number width -> Natural
 toUnsigned (Number n) = n
 
-toSigned :: forall width. (KnownWidth width)
-         => Number width -> Integer
+-- | Interpret a bit pattern as a signed number.
+toSigned
+    :: forall width. (KnownWidth width)
+    => Number width -> Integer
 toSigned n
   | n `testBit` signBit = negate $ toInteger $ toUnsigned $ twosComplement n
   | otherwise           = toInteger $ toUnsigned n
   where
     signBit = widthBits (knownWidth @width) - 1
 
-chooseNumber :: (KnownWidth width)
-             => (Number width, Number width) -> Gen (Number width)
-chooseNumber (Number a, Number b) =
-    fromUnsigned . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
+fromUnsigned
+    :: forall width. (KnownWidth width)
+    => Natural -> Number width
+fromUnsigned n = Number $ truncate (knownWidth @width) n
 
-fromSigned :: forall width. (KnownWidth width)
-           => Integer -> Number width
+fromSigned
+    :: forall width. (KnownWidth width)
+    => Integer -> Number width
 fromSigned n
   | n < negate b
               = error "fromSigned: underflow"
@@ -74,10 +78,13 @@ fromSigned n
     w = widthBits (knownWidth @width)
     b = 2^(w-1) - 1
 
-fromUnsigned
-    :: forall width. (KnownWidth width)
-    => Natural -> Number width
-fromUnsigned n = Number $ truncate (knownWidth @width) n
+-- | Sample a 'Number'.
+chooseNumber
+    :: (KnownWidth width)
+    => (Number width, Number width) -> Gen (Number width)
+chooseNumber (Number a, Number b) =
+    fromUnsigned . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
+
 
 -- | Checked.
 fromUnsignedC

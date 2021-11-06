@@ -248,7 +248,7 @@ genExpr' _width = sized gen
 -- * SomeExpr
 
 data SomeExpr where
-    SomeExpr :: KnownWidth width => Expr width -> SomeExpr
+    SomeExpr :: (KnownWidth width) => Expr width -> SomeExpr
 
 instance Show SomeExpr where
     show (SomeExpr (e :: Expr width)) =
