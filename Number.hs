@@ -20,6 +20,7 @@ module Number
     ) where
 
 import Data.Bits
+import Numeric (showHex)
 import Numeric.Natural
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
@@ -40,7 +41,9 @@ newtype Number (width :: Width) where
   deriving (Eq, Ord)
 
 instance Show (Number width) where
-    show (Number n) = show n
+    showsPrec _ (Number n)
+      | n < 10    = shows n
+      | otherwise = showString "0x" . showHex n
 
 toUnsigned :: Number width -> Natural
 toUnsigned (Number n) = n
