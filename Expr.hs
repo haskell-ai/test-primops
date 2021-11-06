@@ -237,8 +237,8 @@ load off
       let xs = BS.unpack $ BS.take (w `div` 8) $ BS.drop (fromIntegral off) buffer
           w = widthBits (knownWidth @width)
           swap = case endianness of
-                   LittleEndian -> reverse
-                   BigEndian    -> id
+                   LittleEndian -> id
+                   BigEndian    -> reverse
       in foldl' (.|.) 0
          [ fromIntegral n `shiftL` (8*i)
          | (i,n) <- zip [0..] (swap xs)
