@@ -1,4 +1,4 @@
--- | Expressions
+-- | Cmm Expressions
 module Expr
     ( -- * Relational operators
       RelationalOp(..)
