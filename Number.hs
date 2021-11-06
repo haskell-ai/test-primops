@@ -2,8 +2,9 @@
 -- "bit-pattern".
 module Number
     ( Number
+    , toSigned
     , fromSigned
-    , getNumber
+    , toUnsigned
     , chooseNumber
     , mkNumber, mkNumberC
     , n8, n16, n32, n64
@@ -29,14 +30,14 @@ newtype Number (width :: Width) where
 instance Show (Number width) where
     show (Number n) = show n
 
-getNumber :: Number width -> Natural
-getNumber (Number n) = n
+toUnsigned :: Number width -> Natural
+toUnsigned (Number n) = n
 
 toSigned :: forall width. (KnownWidth width)
          => Number width -> Integer
 toSigned n
-  | n `testBit` signBit = negate $ toInteger $ getNumber $ twosComplement n
-  | otherwise           = toInteger $ getNumber n
+  | n `testBit` signBit = negate $ toInteger $ toUnsigned $ twosComplement n
+  | otherwise           = toInteger $ toUnsigned n
   where
     signBit = widthBits (knownWidth @width) - 1
 
@@ -198,7 +199,7 @@ shiftRl n s
 divU, divS, remU, remS
     :: forall width. (KnownWidth width)
     => Number width -> Number width -> Number width
-divU a b = mkNumberC $ getNumber a `quot` getNumber b
+divU a b = mkNumberC $ toUnsigned a `quot` toUnsigned b
 divS a b = fromSigned $ toSigned a `quot` toSigned b
-remU a b = mkNumberC $ getNumber a `rem` getNumber b
+remU a b = mkNumberC $ toUnsigned a `rem` toUnsigned b
 remS a b = fromSigned $ toSigned a `rem` toSigned b

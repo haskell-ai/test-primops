@@ -204,15 +204,15 @@ interpret (EDivU a b)  = interpret a `divU` interpret b
 interpret (ERemU a b)  = interpret a `remU` interpret b
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
-interpret (EShl a b)   = interpret a `shiftL` fromIntegral (getNumber $ interpret b)
-interpret (EShrl a b)  = interpret a `shiftRl` fromIntegral (getNumber $ interpret b)
-interpret (EShra a b)  = interpret a `shiftRa` fromIntegral (getNumber $ interpret b)
+interpret (EShl a b)   = interpret a `shiftL` fromIntegral (toUnsigned $ interpret b)
+interpret (EShrl a b)  = interpret a `shiftRl` fromIntegral (toUnsigned $ interpret b)
+interpret (EShra a b)  = interpret a `shiftRa` fromIntegral (toUnsigned $ interpret b)
 interpret (ENot a)     = complement (interpret a)
 interpret (ENegate a)  = negate (interpret a)
 interpret (ENarrow a)  = truncateNumber (interpret a)
 interpret (ESignExt a) = signExtNumber (interpret a)
 interpret (EZeroExt a) = zeroExtNumber (interpret a)
-interpret (ELoad off)  = load $ getNumber $ interpret off
+interpret (ELoad off)  = load $ toUnsigned $ interpret off
 interpret (ELit n)     = n
 
 bufferSize :: Natural
