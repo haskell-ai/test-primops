@@ -3,10 +3,11 @@
 module Number
     ( Number
     , toSigned
-    , fromSigned
     , toUnsigned
+    , fromSigned
+    , fromUnsigned
+    , fromUnsignedC
     , chooseNumber
-    , mkNumber, mkNumberC
     , n8, n16, n32, n64
     , ones
     , truncateNumber
@@ -44,7 +45,7 @@ toSigned n
 chooseNumber :: (KnownWidth width)
              => (Number width, Number width) -> Gen (Number width)
 chooseNumber (Number a, Number b) =
-    mkNumber . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
+    fromUnsigned . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
 
 fromSigned :: forall width. (KnownWidth width)
            => Integer -> Number width
@@ -58,30 +59,32 @@ fromSigned n
     w = widthBits (knownWidth @width)
     b = 2^(w-1) - 1
 
-mkNumber :: forall width. (KnownWidth width)
-         => Natural -> Number width
-mkNumber n = Number $ truncate (knownWidth @width) n
+fromUnsigned
+    :: forall width. (KnownWidth width)
+    => Natural -> Number width
+fromUnsigned n = Number $ truncate (knownWidth @width) n
 
 -- | Checked.
-mkNumberC :: forall width. (KnownWidth width)
-          => Natural -> Number width
-mkNumberC n
+fromUnsignedC
+    :: forall width. (KnownWidth width)
+    => Natural -> Number width
+fromUnsignedC n
   | n == n'   = Number n'
-  | otherwise = error "mkNumberC: out of range"
+  | otherwise = error "fromUnsignedC: out of range"
   where
     n' = truncate (knownWidth @width) n
 
 n8 :: Natural -> Number W8
-n8 = mkNumber
+n8 = fromUnsigned
 
 n16 :: Natural -> Number W16
-n16 = mkNumber
+n16 = fromUnsigned
 
 n32 :: Natural -> Number W32
-n32 = mkNumber
+n32 = fromUnsigned
 
 n64 :: Natural -> Number W64
-n64 = mkNumber
+n64 = fromUnsigned
 
 instance (KnownWidth width) => Enum (Number width) where
     fromEnum (Number n) = fromIntegral n
@@ -97,8 +100,8 @@ instance (KnownWidth width) => Bounded (Number width) where
 instance (KnownWidth width) => Arbitrary (Number width) where
     arbitrary = chooseNumber (minBound, maxBound)
     shrink (Number 0) = []
-    shrink (Number 1) = [mkNumber 0]
-    shrink (Number x) = map mkNumber [0, 1, x `div` 2]
+    shrink (Number 1) = [fromUnsigned 0]
+    shrink (Number x) = map fromUnsigned [0, 1, x `div` 2]
 
 instance (KnownWidth width) => Num (Number width) where
     (+) = liftBinOp (+)
@@ -106,7 +109,7 @@ instance (KnownWidth width) => Num (Number width) where
     negate = twosComplement
     signum _ = 1
     abs = id
-    fromInteger = mkNumber . fromIntegral
+    fromInteger = fromUnsigned . fromIntegral
 
 instance (KnownWidth width) => Real (Number width) where
     toRational (Number n) = toRational n
@@ -126,7 +129,7 @@ instance (KnownWidth width) => Bits (Number width) where
     bitSizeMaybe = Just . bitSize
     isSigned _ = False
     testBit (Number n) i = n `testBit` i
-    bit i = mkNumber $ bit i
+    bit i = fromUnsigned $ bit i
     popCount (Number n) = popCount n
 
 ones :: forall width. (KnownWidth width) => Number width
@@ -136,7 +139,7 @@ twosComplement
     :: forall width. KnownWidth width
     => Number width -> Number width
 twosComplement (Number n) =
-    mkNumber ((1 `shiftL` w) - n)
+    fromUnsigned ((1 `shiftL` w) - n)
   where w = widthBits (knownWidth @width)
 
 liftUnOp
@@ -144,18 +147,18 @@ liftUnOp
     => (Natural -> Natural)
     -> Number width -> Number width
 liftUnOp f (Number a) =
-    mkNumber (f a)
+    fromUnsigned (f a)
 
 liftBinOp
     :: forall width. KnownWidth width
     => (Natural -> Natural -> Natural)
     -> Number width -> Number width -> Number width
-liftBinOp f (Number a) (Number b) = mkNumber (f a b)
+liftBinOp f (Number a) (Number b) = fromUnsigned (f a b)
 
 truncateNumber
     :: forall wide narrow. (KnownWidth narrow)
     => Number wide -> Number narrow
-truncateNumber (Number n) = mkNumber n
+truncateNumber (Number n) = fromUnsigned n
 
 signExtend :: Int   -- ^ Initial width
            -> Int   -- ^ Target width
@@ -178,7 +181,7 @@ signExtNumber (Number n) = Number $ signExtend narrowW wideW n
 zeroExtNumber
     :: forall wide narrow. (KnownWidth wide)
     => Number narrow -> Number wide
-zeroExtNumber (Number n) = mkNumber n
+zeroExtNumber (Number n) = fromUnsigned n
 
 shiftRa
     :: forall width. (KnownWidth width)
@@ -199,7 +202,7 @@ shiftRl n s
 divU, divS, remU, remS
     :: forall width. (KnownWidth width)
     => Number width -> Number width -> Number width
-divU a b = mkNumberC $ toUnsigned a `quot` toUnsigned b
+divU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
 divS a b = fromSigned $ toSigned a `quot` toSigned b
-remU a b = mkNumberC $ toUnsigned a `rem` toUnsigned b
+remU a b = fromUnsignedC $ toUnsigned a `rem` toUnsigned b
 remS a b = fromSigned $ toSigned a `rem` toSigned b
