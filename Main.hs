@@ -10,7 +10,7 @@ import ToCmm
 
 prop :: KnownWidth width => Expr width -> Property
 prop e =
-    interpreterConverges e .&. ghcAgrees ["-O0", "-ddump-cmm"] e
+    interpreterConverges e .&. ghcAgrees ["-O0", "-dcmm-lint", "-dasm-lint"] e
 
 interpreterConverges :: KnownWidth width => Expr width -> Property
 interpreterConverges e = property $ interpret e `seq` True
