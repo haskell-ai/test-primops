@@ -1,4 +1,4 @@
-module Parse where
+module Parse (parseExpr) where
 
 import Control.Monad
 import Control.Monad.Trans.Except
@@ -16,6 +16,12 @@ import Width
 import Expr
 
 type Parser = Parsec Void String
+
+parseExpr :: String -> SomeExpr
+parseExpr s =
+    case runParser expr "input" s of
+      Left err -> error $ errorBundlePretty err
+      Right e  -> e
 
 expr :: Parser SomeExpr
 expr = makeExprParser term [operators] <?> "expression"
