@@ -1,7 +1,6 @@
 -- | Expressions
 module Expr
-    ( Signedness(..)
-    , RelationalOp(..)
+    ( RelationalOp(..)
     , Expr(..), SomeExpr(..)
     , showExpr
     , showInterpretedExpr
@@ -27,10 +26,6 @@ import Prelude hiding (truncate)
 import Width
 import Number
 
-data Signedness = Signed | Unsigned
-
-instance Arbitrary Signedness where arbitrary = elements [Signed, Unsigned]
-
 data RelationalOp
     = REq
     | RNEq
@@ -55,10 +50,8 @@ data Expr (width :: Width) where
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
     EMul     :: Expr width -> Expr width -> Expr width
-    EDivU    :: Expr width -> Expr width -> Expr width
-    ERemU    :: Expr width -> Expr width -> Expr width
-    EDivS    :: Expr width -> Expr width -> Expr width
-    ERemS    :: Expr width -> Expr width -> Expr width
+    EDiv     :: Signedness -> Expr width -> Expr width -> Expr width
+    ERem     :: Signedness -> Expr width -> Expr width -> Expr width
 
     EAnd     :: Expr width -> Expr width -> Expr width
     EOr      :: Expr width -> Expr width -> Expr width
@@ -115,10 +108,8 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
           EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
-          EDivU    a b -> shrinkDivOp EDivU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          ERemU    a b -> shrinkDivOp ERemU a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          EDivS    a b -> shrinkDivOp EDivS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          ERemS    a b -> shrinkDivOp ERemS a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          EDiv   s a b -> shrinkDivOp (EDiv s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+          ERem   s a b -> shrinkDivOp (ERem s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
           EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           EXOr     a b -> shrinkBinOp EXOr  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
@@ -187,10 +178,8 @@ genExpr' _width = sized gen
         [ binOp EAdd
         , binOp ESub
         , binOp EMul
-        --, divOp EDivU
-        --, divOp ERemU
-        --, divOp EDivS
-        --, divOp ERemS
+        , divOp EDiv
+        , divOp ERem
         , ENegate <$> arbitrary
         ]
 
@@ -223,7 +212,7 @@ genExpr' _width = sized gen
     arbitraryShift = ELit <$> chooseNumber (0, 64-1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
-    divOp f = f <$> subexpr2 <*> nonzero subexpr2
+    divOp f = f <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
     nonzero = flip suchThat $ \x -> interpret x /= 0
 
 -- * SomeExpr
@@ -283,10 +272,8 @@ interpret (ERel o a b) = boolVal $ interpretRelOp o (interpret a) (interpret b)
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
 interpret (EMul a b)   = interpret a * interpret b
-interpret (EDivS a b)  = interpret a `divS` interpret b
-interpret (ERemS a b)  = interpret a `remS` interpret b
-interpret (EDivU a b)  = interpret a `divU` interpret b
-interpret (ERemU a b)  = interpret a `remU` interpret b
+interpret (EDiv s a b) = divNumber s (interpret a) (interpret b)
+interpret (ERem s a b) = remNumber s (interpret a) (interpret b)
 interpret (EAnd a b)   = interpret a .&. interpret b
 interpret (EOr  a b)   = interpret a .|. interpret b
 interpret (EXOr a b)   = interpret a `xor` interpret b
@@ -341,10 +328,8 @@ exprToTree f e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
-      EDivU   a b -> binOp "/u" a b
-      EDivS   a b -> binOp "/s" a b
-      ERemU   a b -> binOp "%u" a b
-      ERemS   a b -> binOp "%s" a b
+      EDiv  s a b -> binOp ("/"++signednessTag s) a b
+      ERem  s a b -> binOp ("%"++signednessTag s) a b
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       EXOr    a b -> binOp "^" a b

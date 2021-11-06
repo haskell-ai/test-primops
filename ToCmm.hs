@@ -78,10 +78,8 @@ toCmmExpr e =
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
-      EDivU   a b -> machOp "%divu"       [toCmmExpr a, toCmmExpr b]
-      ERemU   a b -> machOp "%modu"       [toCmmExpr a, toCmmExpr b]
-      EDivS   a b -> machOp "%quot"       [toCmmExpr a, toCmmExpr b]
-      ERemS   a b -> machOp "%rem"        [toCmmExpr a, toCmmExpr b]
+      EDiv  s a b -> machOp (divOp s)     [toCmmExpr a, toCmmExpr b]
+      ERem  s a b -> machOp (remOp s)     [toCmmExpr a, toCmmExpr b]
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       EXOr    a b -> binOp "^" a b
@@ -98,6 +96,10 @@ toCmmExpr e =
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
     w = knownWidth @width
+    divOp Unsigned = "%divu"
+    divOp Signed   = "%quot"
+    remOp Unsigned = "%modu"
+    remOp Signed   = "%rem"
 
 parens, braces :: String -> String
 parens s = concat ["(", s, ")"]

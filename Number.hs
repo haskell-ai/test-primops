@@ -1,7 +1,9 @@
 -- | Fixed-width numbers. In hindsight this should have been called
 -- "bit-pattern".
 module Number
-    ( Number
+    ( Signedness(..)
+    , signednessTag
+    , Number
     , toSigned
     , toUnsigned
     , fromSigned
@@ -14,7 +16,7 @@ module Number
     , signExtNumber
     , zeroExtNumber
     , shiftRa, shiftRl
-    , divU, divS, remU, remS
+    , divNumber, remNumber
     ) where
 
 import Data.Bits
@@ -23,6 +25,15 @@ import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
 
 import Width
+
+data Signedness = Signed | Unsigned
+
+signednessTag :: Signedness -> String
+signednessTag Signed   = "s"
+signednessTag Unsigned = "u"
+
+instance Arbitrary Signedness where
+    arbitrary = elements [Signed, Unsigned]
 
 newtype Number (width :: Width) where
     Number :: Natural -> Number width
@@ -206,3 +217,15 @@ divU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
 divS a b = fromSigned $ toSigned a `quot` toSigned b
 remU a b = fromUnsignedC $ toUnsigned a `rem` toUnsigned b
 remS a b = fromSigned $ toSigned a `rem` toSigned b
+
+divNumber
+    :: forall width. (KnownWidth width)
+    => Signedness -> Number width -> Number width -> Number width
+divNumber Signed   = divS
+divNumber Unsigned = divU
+
+remNumber
+    :: forall width. (KnownWidth width)
+    => Signedness -> Number width -> Number width -> Number width
+remNumber Signed   = remS
+remNumber Unsigned = remU
