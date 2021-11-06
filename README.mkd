@@ -1,0 +1,4 @@
+# test-primops
+
+This is a QuickCheck-based testsuite for GHC's C-- pipeline and
+native code generation backends.
