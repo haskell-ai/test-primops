@@ -58,11 +58,23 @@ signExtOp w = "%sx" <> show (widthBits w)
 machOp :: String -> [String] -> String
 machOp op args = op <> parens (intercalate "," args)
 
+cmmRelOp :: RelationalOp -> String
+cmmRelOp op =
+    case op of
+      REq    -> "%eq"
+      RNEq   -> "%ne"
+      RGT  s -> signed s "%gt"
+      RGE  s -> signed s "%ge"
+      RLT  s -> signed s "%lt"
+      RLE  s -> signed s "%le"
+  where
+    signed Signed = id
+    signed Unsigned = (++"u")
+
 toCmmExpr :: forall width. KnownWidth width => Expr width -> String
 toCmmExpr e =
     case e of
-      EEq     a b -> binOp "==" a b
-      ENeq    a b -> binOp "!=" a b
+      ERel op a b -> machOp (cmmRelOp op) [toCmmExpr a, toCmmExpr b]
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b

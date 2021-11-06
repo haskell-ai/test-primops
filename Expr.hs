@@ -1,6 +1,8 @@
 -- | Expressions
 module Expr
-    ( Expr(..), SomeExpr(..)
+    ( Signedness(..)
+    , RelationalOp(..)
+    , Expr(..), SomeExpr(..)
     , showExpr
     , showInterpretedExpr
     , exprToTree
@@ -25,9 +27,30 @@ import Prelude hiding (truncate)
 import Width
 import Number
 
+data Signedness = Signed | Unsigned
+
+instance Arbitrary Signedness where arbitrary = elements [Signed, Unsigned]
+
+data RelationalOp
+    = REq
+    | RNEq
+    | RGT Signedness
+    | RGE Signedness
+    | RLT Signedness
+    | RLE Signedness
+
+instance Arbitrary RelationalOp where
+    arbitrary = oneof
+        [ pure REq
+        , pure RNEq
+        , RGT <$> arbitrary
+        , RGE <$> arbitrary
+        , RLT <$> arbitrary
+        , RLE <$> arbitrary
+        ]
+
 data Expr (width :: Width) where
-    EEq      :: (KnownWidth width) => Expr width -> Expr width -> Expr WordSize
-    ENeq     :: (KnownWidth width) => Expr width -> Expr width -> Expr WordSize
+    ERel     :: (KnownWidth width) => RelationalOp -> Expr width -> Expr width -> Expr WordSize
 
     EAdd     :: Expr width -> Expr width -> Expr width
     ESub     :: Expr width -> Expr width -> Expr width
@@ -87,8 +110,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
     arbitrary = genExpr
     shrink e =
         case e of
-          EEq      a b -> shrinkBinOp EEq   a b
-          ENeq     a b -> shrinkBinOp ENeq  a b
+          ERel  op a b -> shrinkBinOp (ERel op) a b
 
           EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
           ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
@@ -193,8 +215,8 @@ genExpr' _width = sized gen
     relationalGens :: [Gen (Expr width)]
     relationalGens
       | Just Refl <- Proxy @width `isSameWidth` Proxy @WordSize
-      = [ binOp EEq
-        , binOp ENeq
+      = [ do op <- arbitrary
+             binOp (ERel op)
         ]
       | otherwise = []
 
@@ -232,10 +254,32 @@ boolVal :: Bool -> Number WordSize
 boolVal True  = 1
 boolVal False = 0
 
+interpretRelOp
+    :: forall width. (KnownWidth width)
+    => RelationalOp
+    -> Number width
+    -> Number width
+    -> Bool
+interpretRelOp op =
+    case op of
+      REq   -> (==)
+      RNEq  -> (/=)
+      RGT s -> signed s (>)
+      RGE s -> signed s (>=)
+      RLT s -> signed s (<)
+      RLE s -> signed s (<=)
+  where
+    signed :: Signedness
+           -> (forall a. (Ord a) => a -> a -> Bool)
+           -> Number width
+           -> Number width
+           -> Bool
+    signed Unsigned f x y = f x y
+    signed Signed   f x y = f (toSigned x) (toSigned y)
+
 interpret :: forall width. (KnownWidth width)
           => Expr width -> Number width
-interpret (EEq  a b)   = boolVal $ interpret a == interpret b
-interpret (ENeq a b)   = boolVal $ interpret a /= interpret b
+interpret (ERel o a b) = boolVal $ interpretRelOp o (interpret a) (interpret b)
 interpret (EAdd a b)   = interpret a + interpret b
 interpret (ESub a b)   = interpret a - interpret b
 interpret (EMul a b)   = interpret a * interpret b
@@ -293,8 +337,7 @@ exprToTree
     -> Tree (String, a)
 exprToTree f e =
     case e of
-      EEq     a b -> binOp "==" a b
-      ENeq    a b -> binOp "/=" a b
+      ERel op a b -> binOp (relOp op) a b
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
@@ -324,6 +367,19 @@ exprToTree f e =
          => String -> Expr w1 -> Tree (String, a)
     unOp op a = Node (op, f e) [exprToTree f a]
     leaf s = Node (s, f e) []
+
+    relOp :: RelationalOp -> String
+    relOp op =
+        case op of
+          REq    -> "=="
+          RNEq   -> "!="
+          RGT  s -> signed s ">"
+          RGE  s -> signed s ">="
+          RLT  s -> signed s "<"
+          RLE  s -> signed s "<="
+      where
+        signed Signed = (++"s")
+        signed Unsigned = (++"u")
 
 showParenTree :: Tree String -> String
 showParenTree (Node lbl [a, b]) =
