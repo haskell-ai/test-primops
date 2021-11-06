@@ -101,7 +101,7 @@ instance (KnownWidth width) => Arbitrary (Number width) where
     arbitrary = chooseNumber (minBound, maxBound)
     shrink (Number 0) = []
     shrink (Number 1) = [fromUnsigned 0]
-    shrink (Number x) = map fromUnsigned [x `div` 2]
+    shrink (Number x) = map fromUnsigned $ (0:) $ reverse $ takeWhile (/= 0) $ tail $ iterate (`div` 2) x
 
 instance (KnownWidth width) => Num (Number width) where
     (+) = liftBinOp (+)
