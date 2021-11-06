@@ -9,14 +9,15 @@ import Expr
 import ToCmm
 
 prop :: KnownWidth width => Expr width -> Property
-prop e = interpreterConverges e .&. ghcAgrees e
+prop e =
+    interpreterConverges e .&. ghcAgrees ["-O0", "-ddump-cmm"] e
 
 interpreterConverges :: KnownWidth width => Expr width -> Property
 interpreterConverges e = property $ interpret e `seq` True
 
-ghcAgrees :: KnownWidth width => Expr width -> Property
-ghcAgrees e = ioProperty $ do
-    r <- evalGhcDyn e
+ghcAgrees :: KnownWidth width => [String] -> Expr width -> Property
+ghcAgrees args e = ioProperty $ do
+    r <- evalGhcDyn args e
     return $ toUnsigned (interpret e) === r
 
 main :: IO ()

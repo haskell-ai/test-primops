@@ -95,8 +95,9 @@ createBufferFile :: IO ()
 createBufferFile = do
     BS.writeFile "test" buffer
 
-evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Natural
-evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalGhc :: forall width. (KnownWidth width)
+        => [String] -> Expr width -> IO Natural
+evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
@@ -114,7 +115,6 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
-    let ghcArgs = ["-O0", "-dcmm-lint"]
     runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ [hsSrc, cmmSrc, "-o", exeName])
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
@@ -128,12 +128,13 @@ evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
     cmmSrc = "test-cmm.cmm"
     hsSrc = "test-hs.hs"
 
-evalGhcDyn :: forall width. (KnownWidth width) => Expr width -> IO Natural
-evalGhcDyn e = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalGhcDyn :: forall width. (KnownWidth width)
+           => [String] -> Expr width -> IO Natural
+evalGhcDyn ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     let inTmp c = c { cwd = Just tmpDir }
-    let ghcArgs = ["-O0", "-package-env", "-", "-dcmm-lint"]
-    runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ ["-shared", "-o", soName, cmmSrc])
+    let ghcArgs' = ghcArgs ++ ["-package-env", "-", "-shared", "-o", soName, cmmSrc]
+    runProcess' $ inTmp (proc ghcPath ghcArgs')
     out <- readProcess runnerName [tmpDir </> soName] ""
     return $ read out
   where
