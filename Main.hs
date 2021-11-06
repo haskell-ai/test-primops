@@ -20,7 +20,12 @@ ghcAgrees args e = ioProperty $ do
     r <- evalGhcDyn args e
     return $ toUnsigned (interpret e) === r
 
+run :: forall width. (KnownWidth width) => IO Result
+run = do
+    createBufferFile
+    quickCheckResult $ verbose (prop @width)
+
 main :: IO ()
 main = do
-    createBufferFile
-    quickCheck $ verbose (prop @W64)
+    _ <- run @W64
+    return ()
