@@ -1,6 +1,8 @@
 -- | Expressions
 module Expr where
 
+import Data.Foldable (foldl')
+import qualified Data.ByteString as BS
 import Numeric.Natural
 import Control.Monad
 import Data.Bits as Bits
@@ -216,11 +218,28 @@ interpret (ELit n)     = n
 bufferSize :: Natural
 bufferSize = 1 `shiftL` 22
 
+buffer :: BS.ByteString
+buffer = BS.pack $ take (fromIntegral bufferSize) [ fromIntegral i | i <- [0..] ]
+
 validOffset :: Natural -> Bool
 validOffset off = off < bufferSize
 
-load :: KnownWidth width => Natural -> Number width
+data Endianness = LittleEndian | BigEndian
+
+endianness :: Endianness
+endianness = LittleEndian
+
+load :: forall width. (KnownWidth width)
+     => Natural -> Number width
 load off
   | not (validOffset off) = error $ "invalid offset " <> show off
-  | otherwise             = 0
-    
+  | otherwise             =
+      let xs = BS.unpack $ BS.take (w `div` 8) $ BS.drop (fromIntegral off) buffer
+          w = widthBits (knownWidth @width)
+          swap = case endianness of
+                   LittleEndian -> reverse
+                   BigEndian    -> id
+      in foldl' (.|.) 0
+         [ fromIntegral n `shiftL` (8*i)
+         | (i,n) <- zip [0..] (swap xs)
+         ]

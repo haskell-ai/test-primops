@@ -6,6 +6,7 @@ module ToCmm
     , toCmmExpr
     ) where
 
+import qualified Data.ByteString as BS
 import System.Exit
 import System.Process
 import System.IO.Temp
@@ -89,7 +90,7 @@ braces s = concat ["[", s, "]"]
 
 createBufferFile :: IO ()
 createBufferFile = do
-    writeFile "test" $ replicate (fromIntegral bufferSize) '\0'
+    BS.writeFile "test" buffer
 
 evalGhc :: forall width. (KnownWidth width) => Expr width -> IO Natural
 evalGhc e = withTempDirectory "." "tmp" $ \tmpDir -> do
