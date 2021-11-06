@@ -1,5 +1,14 @@
 -- | Expressions
-module Expr where
+module Expr
+    ( Expr(..), SomeExpr(..)
+    , showExpr
+    , showInterpretedExpr
+    , exprToTree
+    , genExpr
+    , l8, l16, l32, l64
+    , buffer, load
+    , interpret
+    ) where
 
 import Data.Foldable (foldl')
 import Data.Type.Equality
@@ -7,7 +16,9 @@ import qualified Data.ByteString as BS
 import Numeric.Natural
 import Control.Monad
 import Data.Bits as Bits
+import Data.List (intercalate)
 import Test.QuickCheck hiding ((.&.))
+import Data.Tree
 import Data.Proxy
 import Prelude hiding (truncate)
 
@@ -69,37 +80,6 @@ l64 = ELit . n64
 
 instance KnownWidth width => Show (Expr width) where
     show = showExpr
-
-showExpr :: forall width. (KnownWidth width)
-         => Expr width -> String
-showExpr e =
-    case e of
-      EEq     a b -> binOp "==" a b
-      ENeq    a b -> binOp "/=" a b
-      EAdd    a b -> binOp "+" a b
-      ESub    a b -> binOp "-" a b
-      EMul    a b -> binOp "*" a b
-      EDivU   a b -> binOp "/u" a b
-      EDivS   a b -> binOp "/s" a b
-      ERemU   a b -> binOp "%u" a b
-      ERemS   a b -> binOp "%s" a b
-      EAnd    a b -> binOp "&" a b
-      EOr     a b -> binOp "|" a b
-      EXOr    a b -> binOp "^" a b
-      ENot    a   -> parens $ "~" <> showExpr a
-      EShl    a b -> binOp "<<" a b
-      EShrl   a b -> binOp ">>l" a b
-      EShra   a b -> binOp ">>a" a b
-      ENegate a   -> parens $ "-" <> showExpr a
-      ENarrow (a :: Expr wide) -> parens $ concat ["narrow<", show (knownWidth @wide), "->", show w, "> ", showExpr a]
-      ESignExt (a :: Expr narrow) -> parens $ concat ["sext<", show (knownWidth @narrow), "->", show w, "> ", showExpr a]
-      EZeroExt (a :: Expr narrow) -> parens $ concat ["zext<", show (knownWidth @narrow), "->", show w, "> ", showExpr a]
-      ELoad off   -> parens (show (knownWidth @width) <> "* " <> showExpr off)
-      ELit a      -> parens (show a <> "::" <> show (knownWidth @width))
-  where
-    w = knownWidth @width
-    binOp op a b = parens $ unwords [showExpr a, op, showExpr b]
-    parens s = concat ["(", s, ")"]
 
 -- * Generating arbitrary expressions
 
@@ -185,10 +165,10 @@ genExpr' _width = sized gen
         [ binOp EAdd
         , binOp ESub
         , binOp EMul
-        , divOp EDivU
-        , divOp ERemU
-        , divOp EDivS
-        , divOp ERemS
+        --, divOp EDivU
+        --, divOp ERemU
+        --, divOp EDivS
+        --, divOp ERemS
         , ENegate <$> arbitrary
         ]
 
@@ -305,3 +285,61 @@ load off
          [ fromIntegral n `shiftL` (8*i)
          | (i,n) <- zip [0..] (swap xs)
          ]
+
+exprToTree
+    :: forall width a. (KnownWidth width)
+    => (forall w. (KnownWidth w) => Expr w -> a)
+    -> Expr width
+    -> Tree (String, a)
+exprToTree f e =
+    case e of
+      EEq     a b -> binOp "==" a b
+      ENeq    a b -> binOp "/=" a b
+      EAdd    a b -> binOp "+" a b
+      ESub    a b -> binOp "-" a b
+      EMul    a b -> binOp "*" a b
+      EDivU   a b -> binOp "/u" a b
+      EDivS   a b -> binOp "/s" a b
+      ERemU   a b -> binOp "%u" a b
+      ERemS   a b -> binOp "%s" a b
+      EAnd    a b -> binOp "&" a b
+      EOr     a b -> binOp "|" a b
+      EXOr    a b -> binOp "^" a b
+      ENot    a   -> unOp "~" a
+      EShl    a b -> binOp "<<" a b
+      EShrl   a b -> binOp ">>l" a b
+      EShra   a b -> binOp ">>a" a b
+      ENegate a   -> unOp "-" a
+      ENarrow (a :: Expr wide)    -> unOp (concat ["narrow<", show (knownWidth @wide), "->", show w, ">"]) a
+      ESignExt (a :: Expr narrow) -> unOp (concat ["sext<", show (knownWidth @narrow), "->", show w, ">"]) a
+      EZeroExt (a :: Expr narrow) -> unOp (concat ["zext<", show (knownWidth @narrow), "->", show w, ">"]) a
+      ELoad off   -> unOp (concat ["load<", show (knownWidth @width), ">"]) off
+      ELit a      -> leaf (show a <> "::" <> show (knownWidth @width))
+  where
+    w = knownWidth @width
+    binOp :: forall w1 w2. (KnownWidth w1, KnownWidth w2)
+          => String -> Expr w1 -> Expr w2 -> Tree (String, a)
+    binOp op a b = Node (op, f e) [exprToTree f a, exprToTree f b]
+    unOp :: forall w1. (KnownWidth w1)
+         => String -> Expr w1 -> Tree (String, a)
+    unOp op a = Node (op, f e) [exprToTree f a]
+    leaf s = Node (s, f e) []
+
+showParenTree :: Tree String -> String
+showParenTree (Node lbl [a, b]) =
+    unwords [parens $ showParenTree a, lbl, parens $ showParenTree b]
+showParenTree (Node lbl xs) =
+    lbl <> parens (intercalate ", " $ map showParenTree xs)
+
+parens :: String -> String
+parens s = concat ["(", s, ")"]
+
+showExpr :: forall width. (KnownWidth width)
+         => Expr width -> String
+showExpr = showParenTree . fmap fst . exprToTree (const ())
+
+showInterpretedExpr
+    :: forall width. (KnownWidth width)
+    => Expr width -> Tree String
+showInterpretedExpr =
+    fmap (\(a,b) -> a ++ "\t\t" ++ show b) . exprToTree (toUnsigned . interpret)
