@@ -328,6 +328,7 @@ exprToTree f e =
 showParenTree :: Tree String -> String
 showParenTree (Node lbl [a, b]) =
     unwords [parens $ showParenTree a, lbl, parens $ showParenTree b]
+showParenTree (Node lbl []) = lbl
 showParenTree (Node lbl xs) =
     lbl <> parens (intercalate ", " $ map showParenTree xs)
 
