@@ -12,6 +12,8 @@ import Numeric.Natural
 import Data.Bits
 import Data.Proxy
 import Test.QuickCheck
+import Test.Tasty
+import Test.Tasty.QuickCheck
 import Data.Foldable (foldl')
 
 import Width
@@ -20,17 +22,26 @@ import ToCmm
 import Number
 import Expr
 
-prop_callish_ops_correct :: Compiler -> Property
-prop_callish_ops_correct comp = conjoin $
-    [ property $ prop_callish_correct comp (popcnt @w)
-    | SomeWidth (_ :: Proxy w) <- allWidths
-    ] ++
-    [ property $ prop_callish_correct comp (pdep @w)
-    | SomeWidth (_ :: Proxy w) <- allWidths
-    ] ++
-    [ property $ prop_callish_correct comp (pext @w)
-    | SomeWidth (_ :: Proxy w) <- allWidths
+prop_callish_ops_correct :: Compiler -> TestTree
+prop_callish_ops_correct comp = testGroup "callish ops"
+    [ testCallishOp "popcnt" (\(_ :: Proxy w) -> toProp $ popcnt @w)
+    , testCallishOp "pdep"   (\(_ :: Proxy w) -> toProp $ pdep @w)
+    , testCallishOp "pext"   (\(_ :: Proxy w) -> toProp $ pext @w)
     ]
+  where
+    toProp :: forall args. (CmmArgs args, Arbitrary args, Show args)
+           => CallishOp args WordSize
+           -> Property
+    toProp op = property $ prop_callish_correct comp op
+
+    testCallishOp
+        :: String
+        -> (forall w. (KnownWidth w) => Proxy w -> Property)
+        -> TestTree
+    testCallishOp nm f = testGroup nm
+        [ testProperty (show (knownWidth @w)) (f @w Proxy)
+        | SomeWidth (_ :: Proxy w) <- allWidths
+        ]
 
 popcnt :: forall w. (KnownWidth w) => CallishOp (Expr w) WordSize
 popcnt = CallishOp

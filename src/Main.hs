@@ -58,7 +58,7 @@ quotRemProp interp s a (NonZero b) = ioProperty $ do
 compilerTests :: String -> Compiler -> TestTree
 compilerTests name comp = testGroup name
     [ testProperty "expression correctness" (expr_prop comp)
-    , testProperty "callish correctness" (prop_callish_ops_correct comp)
+    , prop_callish_ops_correct comp
     , testProperty "C-Call correctness" (testCCall comp)
     , testGroup "Quot-Rem invariant"
       [ testProperty (show (knownWidth @w))
