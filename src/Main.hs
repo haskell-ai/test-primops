@@ -3,6 +3,7 @@ module Main where
 
 import Data.Proxy
 import Test.QuickCheck
+import System.Environment (getArgs)
 import Prelude hiding (truncate)
 
 import Width
@@ -17,12 +18,14 @@ import RunGhc
 gHC_PATH :: FilePath
 gHC_PATH = "/opt/exp/ghc/ghc-8.10/_build/stage1/bin/ghc"
 
-ghc, ghcLlvm :: Compiler
-ghc = Compiler gHC_PATH ["-O0", "-dcmm-lint", "-dasm-lint"]
-ghcLlvm = Compiler gHC_PATH ["-fllvm", "-O0", "-dcmm-lint", "-dasm-lint"]
-
-ghcInterpreter :: Interpreter W64
-ghcInterpreter = ghcDynInterpreter' ghc
+compilerConfigs :: FilePath -> [Compiler]
+compilerConfigs ghcPath =
+    [ Compiler ghcPath (["-O0"] ++ commonArgs)
+    , Compiler ghcPath (["-O1"] ++ commonArgs)
+    , Compiler ghcPath (["-O1", "-fllvm"] ++ commonArgs)
+    ]
+  where
+    commonArgs = ["-dcmm-lint", "-dasm-lint"]
 
 -- * Properties
 
@@ -59,6 +62,7 @@ quotRemProp interp s a (NonZero b) = ioProperty $ do
 
 main :: IO ()
 main = do
+    [ghcPath] <- getArgs
     createBufferFile
-    quickCheck $ verbose (compiler_prop ghc)
+    quickCheck $ verbose $ conjoin $ map compiler_prop (compilerConfigs ghcPath)
     return ()
