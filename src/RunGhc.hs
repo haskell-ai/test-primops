@@ -23,6 +23,7 @@ import ToCmm
 data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
                          }
+    deriving (Show)
 
 addArgs :: Compiler -> [String] -> Compiler
 addArgs c args = c { compArgs = compArgs c ++ args }
