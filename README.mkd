@@ -6,10 +6,18 @@ native code generation backends.
 ## Command-line usage
 
 Simply invoke the `test-primops` executable, which is a standard `tasty`
-testsuite. The path to the compiler-under-test can be set using
-`--ghc-path=...`. It is also necessary to compile the `run-it` executable with
-the compiler-under-test. The path to the this executable can be given using the
-`--run-it-path=...` flag.
+testsuite.
+
+In general it can be useful to use distinct compilers to build the
+`test-primops` executable (called the *bootstrap compiler*) and the testcases
+(called the *compiler-under-test*). The path to the compiler-under-test can be
+set using `--ghc-path=...`. It is also necessary to compile the `run-it`
+executable with the compiler-under-test.  The path to the this executable can
+be given using the `--run-it-path=...` flag.
+
+There is a convenient script, `run.sh`, which handles this for you; just set
+the `BOOT_GHC` environment variable to the bootstrap compiler and `TEST_GHC` to
+the compiler-under-test.
 
 ## REPL usage
 
