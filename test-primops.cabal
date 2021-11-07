@@ -13,7 +13,8 @@ executable test-primops
                       Expr.Parse,
                       TestUtils,
                       ToCmm,
-                      CallishOp
+                      CallishOp,
+                      CCall
     build-depends:    base ^>=4.14.3.0,
                       bytestring,
                       containers,

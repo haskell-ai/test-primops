@@ -6,6 +6,8 @@ module ToCmm
     , evalCmm
     , toCmmDecl
     , exprToCmm
+    , compile
+    , runIt
       -- * Utilities
     , commaList
     , parens
@@ -108,7 +110,7 @@ parens s = concat ["(", s, ")"]
 braces s = concat ["[", s, "]"]
 
 commaList :: [String] -> String
-commaList = intercalate ","
+commaList = intercalate ", "
 
 createBufferFile :: IO ()
 createBufferFile = do
@@ -163,15 +165,20 @@ evalGhcDyn ghcPath ghcArgs e = evalCmm ghcPath ghcArgs $ toCmmDecl "test" e
 
 type Cmm = String
 
+runIt :: FilePath -> IO String
+runIt soName =
+    readProcess runnerName [soName] ""
+  where
+    runnerName = "run-it"
+
 -- | Evaluate a Cmm function. Must be named @test@.
 evalCmm :: FilePath -> [String] -> Cmm -> IO Natural
 evalCmm ghcPath ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
     let ghcArgs' = ghcArgs ++ ["-dynamic", "-package-env", "-", "-shared"]
     compile ghcPath tmpDir [cmmSrc] soName ghcArgs'
-    out <- readProcess runnerName [tmpDir </> soName] ""
+    out <- runIt (tmpDir </> soName)
     return $ read out
   where
-    runnerName = "run-it"
     soName = "Test.so"
     cmmSrc = "test-cmm.cmm"

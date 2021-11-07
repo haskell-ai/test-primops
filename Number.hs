@@ -4,6 +4,7 @@ module Number
     ( Signedness(..)
     , signednessTag
     , Number
+    , SomeNumber(..)
     , toSigned
     , toUnsigned
     , fromSigned
@@ -20,6 +21,7 @@ module Number
     ) where
 
 import Data.Bits
+import Data.Proxy
 import Numeric (showHex)
 import Numeric.Natural
 import Test.QuickCheck hiding ((.&.))
@@ -45,6 +47,17 @@ instance Show (Number width) where
     showsPrec _ (Number n)
       | n < 10    = shows n
       | otherwise = showString "0x" . showHex n
+
+data SomeNumber where
+    SomeNumber :: forall w. (KnownWidth w) => Number w -> SomeNumber
+
+instance Show SomeNumber where
+    show (SomeNumber (n :: Number w)) =
+        "SomeNumber @" ++ show (knownWidth @w) ++ " " ++ show n
+
+instance Arbitrary SomeNumber where
+    arbitrary =
+        oneof $ forAllWidths $ \(_ :: Proxy w) -> SomeNumber @w <$> arbitrary
 
 -- | Interpret a bit pattern as an unsigned number.
 toUnsigned :: Number width -> Natural
