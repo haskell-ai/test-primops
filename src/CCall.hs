@@ -42,7 +42,7 @@ testCCall comp c =
         writeFile (tmpDir </> "test_c.c") (cStub c)
         writeFile (tmpDir </> "test.cmm") (cCallCmm c)
         compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
-        out <- runIt (tmpDir </> soName)
+        out <- runIt comp (tmpDir </> soName)
         let saw :: [Natural]
             saw = map read (lines out)
             expected :: [Natural]

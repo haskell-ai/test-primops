@@ -20,7 +20,10 @@ import RunGhc
 
 basicCompiler :: FilePath -> Compiler
 basicCompiler ghcPath =
-    Compiler ghcPath ["-dcmm-lint", "-dasm-lint", "-O0"]
+    Compiler { compPath = ghcPath
+             , compArgs = ["-dcmm-lint", "-dasm-lint", "-O0"]
+             , compRunIt = "run-it"
+             }
 
 compilerConfigs :: FilePath -> [(String, Compiler)]
 compilerConfigs ghcPath =

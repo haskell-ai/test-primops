@@ -22,6 +22,8 @@ import ToCmm
 -- | The location of GHC and arguments to pass it.
 data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
+                         , compRunIt :: FilePath
+                           -- ^ Path of the `run-it` executable built with this compiler.
                          }
     deriving (Show)
 
@@ -96,11 +98,9 @@ evalGhcDyn comp e = evalCmm comp $ toCmmDecl "test" e
 type Cmm = String
 
 -- | Invoke @run-it@ on the given shared object.
-runIt :: FilePath -> IO String
-runIt soName =
-    readProcess runnerName [soName] ""
-  where
-    runnerName = "run-it"
+runIt :: Compiler -> FilePath -> IO String
+runIt comp soName =
+    readProcess (compRunIt comp) [soName] ""
 
 -- | Evaluate a Cmm function using @run-it@. The function must be named @test@
 -- and must return a @bits64@.
@@ -109,7 +109,7 @@ evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
     let args = ["-dynamic", "-package-env", "-", "-shared"]
     compile comp tmpDir [cmmSrc] soName args
-    out <- runIt (tmpDir </> soName)
+    out <- runIt comp (tmpDir </> soName)
     return $ read out
   where
     soName = "Test.so"
