@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.0
 name:               run-it
 version:            0.1.0.0
 author:             Ben Gamari
@@ -11,8 +11,6 @@ synopsis:
 executable run-it
     main-is:          Run.hs
     cmm-sources:      Trampoline.cmm
-    -- silly Cabal doesn't link cmm-sources into executables
-    ghc-options:      Trampoline.cmm
     build-depends:    base ^>=4.14.3.0,
                       unix,
                       mmap
