@@ -8,6 +8,7 @@ module Expr
     , Expr(..), SomeExpr(..)
       -- ** Convenient helpers
     , l8, l16, l32, l64
+    , extendToWord
       -- * Showing
     , showExpr
     , showInterpretedExpr
@@ -125,6 +126,17 @@ l32 = ELit . n32
 
 l64 :: Natural -> Expr W64
 l64 = ELit . n64
+
+extendToWord
+    :: forall width. (KnownWidth width)
+    => Expr width -> Expr WordSize
+extendToWord
+  | Just Refl <- Proxy @WordSize `isSameWidth` Proxy @width
+  = id
+  | Just WiderThanProof <- Proxy @WordSize `isWiderThan` Proxy @width
+  = EZeroExt
+  | otherwise
+  = error "extendToWord"
 
 instance KnownWidth width => Show (Expr width) where
     show = showExpr
