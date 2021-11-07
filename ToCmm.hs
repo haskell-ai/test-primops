@@ -92,14 +92,14 @@ toCmmExpr e =
       ESignExt a  -> machOp (signExtOp w) [toCmmExpr a]
       EZeroExt a  -> machOp (zeroExtOp w) [toCmmExpr a]
       ELoad off   -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
-      ELit n      -> parens $ unwords [show (toUnsigned n), "::", cmmType (knownWidth @width)]
+      ELit n      -> parens $ unwords [show (toSigned n), "::", cmmType (knownWidth @width)]
   where
     binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
     w = knownWidth @width
     quotOp Unsigned = "%divu"
     quotOp Signed   = "%quot"
-    remOp Unsigned = "%modu"
-    remOp Signed   = "%rem"
+    remOp  Unsigned = "%modu"
+    remOp  Signed   = "%rem"
 
 parens, braces :: String -> String
 parens s = concat ["(", s, ")"]
