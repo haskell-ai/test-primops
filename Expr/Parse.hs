@@ -13,6 +13,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void
+import Data.Maybe
 import Test.QuickCheck
 
 import Number
@@ -21,8 +22,14 @@ import Expr
 
 type Parser = Parsec Void String
 
-parseExpr :: String -> SomeExpr
-parseExpr s =
+parseExpr :: forall width. (KnownWidth width) => String -> Expr width
+parseExpr s = fromMaybe (error "parseExpr: incorrect width") $ do
+    SomeExpr (e :: Expr w) <- pure $ parseSomeExpr s
+    Refl <- Proxy @w `isSameWidth` Proxy @width
+    return e
+
+parseSomeExpr :: String -> SomeExpr
+parseSomeExpr s =
     case runParser expr "input" s of
       Left err -> error $ errorBundlePretty err
       Right e  -> e
@@ -186,6 +193,6 @@ parens = between (symbol "(") (symbol ")")
 prop_roundtrips
     :: SomeExpr -> Property
 prop_roundtrips (SomeExpr e) = property $ maybe False (== show e) $ do
-    SomeExpr e' <- pure $ parseExpr (show e)
+    SomeExpr e' <- pure $ parseSomeExpr (show e)
     Refl <- e `isSameWidth` e'
     return (show e')
