@@ -98,13 +98,19 @@ evalCallish
     -> args
     -> IO (Number WordSize)
 evalCallish op args =
-    fromUnsigned <$> evalCmm gHC_PATH ["-dcmm-lint"] cmm
+    fromUnsigned <$> evalCmm gHC_PATH ["-dcmm-lint"] (evalCallishCmm op args)
+
+evalCallishCmm
+    :: forall args. (CmmArgs args)
+    => CallishOp args WordSize
+    -> args
+    -> String
+evalCallishCmm op args = unlines
+    [ "test ( bits64 buffer ) {"
+    , "  bits64 ret;"
+    , "  (ret) = prim " ++ name op ++ argList ++ ";"
+    , "  return (ret);"
+    , "}"
+    ]
   where
     argList = parens $ commaList [exprToCmm e | SomeExpr e <- getArgs args]
-    cmm = unlines
-        [ "test ( bits64 buffer ) {"
-        , "  bits64 ret;"
-        , "  (ret) = prim " ++ name op ++ argList ++ ";"
-        , "  return (ret);"
-        , "}"
-        ]
