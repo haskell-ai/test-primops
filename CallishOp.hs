@@ -2,6 +2,7 @@ module CallishOp where
 
 import Numeric.Natural
 import Data.Bits
+import Data.Proxy
 import Test.QuickCheck
 import Data.Foldable (foldl')
 
@@ -10,6 +11,15 @@ import TestUtils
 import ToCmm
 import Number
 import Expr
+
+prop_callishs_correct :: Property
+prop_callishs_correct = conjoin $
+    [ property $ prop_callish_correct (pdep @w)
+    | SomeWidth (_ :: Proxy w) <- allWidths
+    ] ++
+    [ property $ prop_callish_correct (pext @w)
+    | SomeWidth (_ :: Proxy w) <- allWidths
+    ]
 
 popcnt :: forall w. (KnownWidth w) => Callish (Expr w) WordSize
 popcnt = Callish
