@@ -35,7 +35,7 @@ executable test-primops
                       temporary,
                       transformers
     build-tool-depends: run-it:run-it
-    ghc-options:      -Wall -Wno-unticked-promoted-constructors
+    ghc-options:      -Wall -Wno-unticked-promoted-constructors -threaded
     default-extensions:
         AllowAmbiguousTypes
         DataKinds
