@@ -148,7 +148,7 @@ instance KnownWidth width => Arbitrary (Expr width) where
           ERel  op a b -> shrinkBinOp (ERel op) a b
 
           EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ]
+          ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ] ++ [ ENegate b | interpret a == 0 ]
           EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
           EQuot  s a b -> shrinkDivOp (EQuot s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
           ERem   s a b -> shrinkDivOp (ERem s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
