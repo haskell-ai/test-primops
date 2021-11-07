@@ -25,8 +25,9 @@ type Parser = Parsec Void String
 parseExpr :: forall width. (KnownWidth width) => String -> Expr width
 parseExpr s = fromMaybe (error "parseExpr: incorrect width") $ do
     SomeExpr (e :: Expr w) <- pure $ parseSomeExpr s
-    Refl <- Proxy @w `isSameWidth` Proxy @width
-    return e
+    case Proxy @w `compareWidths` Proxy @width of
+        SameWidth -> Just e
+        _ -> Nothing
 
 parseSomeExpr :: String -> SomeExpr
 parseSomeExpr s =
@@ -68,9 +69,9 @@ operators =
   where
     checkWidths :: forall a b. (KnownWidth a, KnownWidth b) => Except String (a :~: b)
     checkWidths
-      | Just refl <- Proxy @a `isSameWidth` Proxy @b
-      = return refl
-      | otherwise = throwE "type mismatch"
+      | SameWidth <- Proxy @a `compareWidths` Proxy @b
+      = return Refl
+      | otherwise = throwE $ unwords ["type mismatch:", show (knownWidth @a), show (knownWidth @b)]
 
     runExcept' :: Except String a -> a
     runExcept' = either error id . runExcept
@@ -144,7 +145,7 @@ operators =
     narrowOps = do
         SomeWidth (narrow :: Proxy narrow) <- allWidths
         SomeWidth (wide :: Proxy wide) <- allWidths
-        Just WiderThanProof <- pure $ wide `isWiderThan` narrow
+        Wider <- pure $ wide `compareWidths` narrow
         let tok = concat ["narrow[", show (knownWidth @wide), "→", show (knownWidth @narrow), "]"]
         return $ fixedWidthUnOp tok (ENarrow @wide @narrow)
 
@@ -155,7 +156,7 @@ operators =
     extendOps op k = do
         SomeWidth (narrow :: Proxy narrow) <- allWidths
         SomeWidth (wide :: Proxy wide) <- allWidths
-        Just WiderThanProof <- pure $ wide `isWiderThan` narrow
+        Wider <- pure $ wide `compareWidths` narrow
         let tok = concat [op, "[", show (knownWidth @narrow), "→", show (knownWidth @wide), "]"]
         return $ fixedWidthUnOp tok (k @wide @narrow)
 
@@ -192,7 +193,9 @@ parens = between (symbol "(") (symbol ")")
 
 prop_roundtrips
     :: SomeExpr -> Property
-prop_roundtrips (SomeExpr e) = property $ maybe False (== show e) $ do
-    SomeExpr e' <- pure $ parseSomeExpr (show e)
-    Refl <- e `isSameWidth` e'
-    return (show e')
+prop_roundtrips (SomeExpr e) =
+    case parseSomeExpr (show e) of
+      SomeExpr e' ->
+        case e `compareWidths` e' of
+          SameWidth -> show e' === show e
+          _         -> property False

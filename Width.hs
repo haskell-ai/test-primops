@@ -57,27 +57,19 @@ instance WiderThan W64 W8
 instance WiderThan W64 W16
 instance WiderThan W64 W32
 
-data WiderThanProof wide narrow where
-    WiderThanProof :: (wide `WiderThan` narrow) => WiderThanProof wide narrow
+data WidthOrdering a b where
+  Narrower  :: (b `WiderThan` a) => WidthOrdering a b
+  SameWidth :: (b ~ a)           => WidthOrdering a b
+  Wider     :: (a `WiderThan` b) => WidthOrdering a b
 
-isWiderThan
-    :: forall wide narrow proxy. (KnownWidth wide, KnownWidth narrow)
-    => proxy wide -> proxy narrow
-    -> Maybe (WiderThanProof wide narrow)
-isWiderThan _ _
-  | wide > narrow = Just (unsafeCoerce $ WiderThanProof @W16 @W8)
-  | otherwise     = Nothing
-  where
-    wide   = knownWidth @wide
-    narrow = knownWidth @narrow
-
-isSameWidth
+compareWidths
     :: forall a b proxy. (KnownWidth a, KnownWidth b)
     => proxy a -> proxy b
-    -> Maybe (a :~: b)
-isSameWidth _ _
-  | a == b    = Just (unsafeCoerce $ Refl @W8)
-  | otherwise = Nothing
+    -> WidthOrdering a b
+compareWidths _ _
+  | a > b     = unsafeCoerce $ Wider @W16 @W8
+  | a < b     = unsafeCoerce $ Narrower @W16 @W8
+  | otherwise = unsafeCoerce $ SameWidth @W8
   where
     a = knownWidth @a
     b = knownWidth @b

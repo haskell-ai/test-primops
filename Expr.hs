@@ -130,13 +130,11 @@ l64 = ELit . n64
 extendToWord
     :: forall width. (KnownWidth width)
     => Expr width -> Expr WordSize
-extendToWord
-  | Just Refl <- Proxy @WordSize `isSameWidth` Proxy @width
-  = id
-  | Just WiderThanProof <- Proxy @WordSize `isWiderThan` Proxy @width
-  = EZeroExt
-  | otherwise
-  = error "extendToWord"
+extendToWord e =
+  case Proxy @WordSize `compareWidths` Proxy @width of
+    Narrower  -> error "extendToWord"
+    SameWidth -> e
+    Wider     -> EZeroExt e
 
 instance KnownWidth width => Show (Expr width) where
     show = showExpr
@@ -163,13 +161,13 @@ instance KnownWidth width => Arbitrary (Expr width) where
           EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
           ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
           ENarrow  a   -> shrinkUnOp  ENarrow a
-                          ++ [ ENarrow b | ENarrow b <- pure a, Just WiderThanProof <- pure $ b `isWiderThan` e ]
-                          ++ [ b | EZeroExt b <- pure a, Just Refl <- pure $ e `isSameWidth` b ]
+                          ++ [ ENarrow b | ENarrow b <- pure a, Wider <- pure $ b `compareWidths` e ]
+                          ++ [ b | EZeroExt b <- pure a, SameWidth <- pure $ e `compareWidths` b ]
           ESignExt a   -> shrinkUnOp  ESignExt a
-                          ++ [ ESignExt b | ESignExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
+                          ++ [ ESignExt b | ESignExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
                           ++ [ EZeroExt a ]
           EZeroExt a   -> shrinkUnOp  EZeroExt a
-                          ++ [ EZeroExt b | EZeroExt b <- pure a, Just WiderThanProof <- pure $ e `isWiderThan` b ]
+                          ++ [ EZeroExt b | EZeroExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
           ELoad    a   -> shrinkUnOp  ELoad a
           ELit     a   -> map ELit (shrink a)
       where
@@ -247,7 +245,7 @@ genExpr' _width = sized gen
 
     relationalGens :: [Gen (Expr width)]
     relationalGens
-      | Just Refl <- Proxy @width `isSameWidth` Proxy @WordSize
+      | SameWidth <- Proxy @width `compareWidths` Proxy @WordSize
       = [ do op <- arbitrary
              binOp (ERel op)
         ]
