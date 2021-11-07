@@ -1,4 +1,12 @@
-module TestUtils where
+module Interpreter
+    ( Interpreter
+    , refInterpreter
+    , ghcStaticInterpreter
+    , ghcDynInterpreter'
+      -- * Properties of interpreters
+    , agree
+    , converges
+    ) where
 
 import Test.QuickCheck
 
@@ -35,11 +43,11 @@ agree interp1 interp2 e = ioProperty $ do
     return $ r1 === r2
 
 -- | Check that an 'Interpreter' successfully evaluates an expression.
-interpreterConverges
+converges
     :: (KnownWidth width)
     => Interpreter width
     -> Expr width
     -> Property
-interpreterConverges interp e = ioProperty $ do
+converges interp e = ioProperty $ do
     v <- interp e
     v `seq` return True

@@ -9,7 +9,7 @@ import Width
 import Number
 import Expr
 import ToCmm
-import TestUtils
+import Interpreter
 import CallishOp
 import CCall
 import RunGhc
@@ -28,7 +28,7 @@ ghcInterpreter = ghcDynInterpreter' ghc
 
 expr_prop :: Compiler -> Expr W64 -> Property
 expr_prop comp e = conjoin
-    [ interpreterConverges refInterpreter e
+    [ converges refInterpreter e
     , agree refInterpreter (ghcDynInterpreter' comp) e
     ]
 
