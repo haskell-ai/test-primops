@@ -18,10 +18,12 @@ import Expr
 import Width
 import ToCmm
 
+-- | The location of GHC and arguments to pass it.
 data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
                          }
 
+-- | Compile a set of compilation units.
 compile :: Compiler
         -> FilePath   -- ^ working directory
         -> [FilePath] -- ^ sources
@@ -38,6 +40,8 @@ compile comp workDir srcs out args = do
         ExitSuccess <- waitForProcess hdl
         return ()
 
+-- | Evaluate an 'Expr' without relying on @run-it@. This is a bit slower than
+-- 'evalGhcDyn'.
 evalGhcStatic
     :: forall width. (KnownWidth width)
     => Compiler -> Expr width -> IO Natural
@@ -80,19 +84,21 @@ toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
       | w == W64  = ""
       | otherwise =  "extendWord" <> show (widthBits w) <> "#"
 
-evalGhcDyn :: forall width. (KnownWidth width)
-           => Compiler -> Expr width -> IO Natural
+-- | Evaluate an 'Expr'.
+evalGhcDyn :: Compiler -> Expr WordSize -> IO Natural
 evalGhcDyn comp e = evalCmm comp $ toCmmDecl "test" e
 
 type Cmm = String
 
+-- | Invoke @run-it@ on the given shared object.
 runIt :: FilePath -> IO String
 runIt soName =
     readProcess runnerName [soName] ""
   where
     runnerName = "run-it"
 
--- | Evaluate a Cmm function. Must be named @test@.
+-- | Evaluate a Cmm function using @run-it@. The function must be named @test@
+-- and must return a @bits64@.
 evalCmm :: Compiler -> Cmm -> IO Natural
 evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm

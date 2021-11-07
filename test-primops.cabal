@@ -3,7 +3,10 @@ name:               test-primops
 version:            0.1.0.0
 author:             Ben Gamari
 maintainer:         ben@smart-cactus.org
+license:            BSD-3-Clause
 copyright:          (c) 2021 Ben Gamari
+synopsis:
+  A QuickCheck testsuite for GHC's Cmm pipeline.
 
 executable test-primops
     main-is:          Main.hs

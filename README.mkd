@@ -7,7 +7,7 @@ native code generation backends.
 
  * [x] test machops
  * [x] test callish machops
- * [ ] test ccalls
+ * [x] test ccalls
  * [ ] test stores
  * [ ] batch testing of expressions
  * [x] test `Expr` parser roundtripping

@@ -3,7 +3,10 @@ name:               run-it
 version:            0.1.0.0
 author:             Ben Gamari
 maintainer:         ben@smart-cactus.org
+license:            BSD-3-Clause
 copyright:          (c) 2021 Ben Gamari
+synopsis:
+  A small shim for dynamically loading and evaluating code from shared objects.
 
 executable run-it
     main-is:          Run.hs
