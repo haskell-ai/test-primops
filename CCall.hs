@@ -16,6 +16,9 @@ data CCallDesc
                 }
     deriving (Show)
 
+retWidth :: CCallDesc -> Width
+retWidth = someNumberWidth . callRet
+
 mAX_ARGS :: Int
 mAX_ARGS = 32
 
@@ -36,7 +39,6 @@ testCCall ghcPath c =
         writeFile (tmpDir </> "test.cmm") (cCallCmm c)
         compile ghcPath tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
         out <- runIt (tmpDir </> soName)
-        putStrLn out
         let saw :: [Natural]
             saw = map read (lines out)
             expected :: [Natural]
@@ -48,7 +50,7 @@ testCCall ghcPath c =
     soName = "test.so"
 
 cStub :: CCallDesc -> String
-cStub c@(CCallDesc { callRet = SomeNumber (ret :: Number ret) })
+cStub c
   = unlines
     [ "#include <stdio.h>"
     , "#include <stdint.h>"
@@ -59,13 +61,12 @@ cStub c@(CCallDesc { callRet = SomeNumber (ret :: Number ret) })
   where
     argBndrs = [ "arg"++show i | (i,_) <- zip [0::Int ..] (callArgs c) ]
     argWidths = [ knownWidth @w | SomeNumber (_ :: Number w) <- callArgs c ]
-    retType = cType (knownWidth @ret)
 
     funcDef = unlines $
-      [ retType <> " test_c(" <> argList <> ") {" ] ++
+      [ cType (retWidth c) <> " test_c(" <> argList <> ") {" ] ++
       zipWith printArg argWidths argBndrs ++
       [ "  fflush(stdout);"
-      , "  return " ++ show ret ++ ";"
+      , "  return " ++ show (someNumberToUnsigned $ callRet c) ++ "ULL;"
       , "}"
       ]
 
@@ -95,7 +96,7 @@ cType W64 = "uint64_t"
 cCallCmm :: CCallDesc -> String
 cCallCmm c = unlines
     [ "test(bits64 buffer) {"
-    , "  bits64 ret;"
+    , "  "++cmmType (retWidth c)++" ret;"
     , "  (ret) = foreign \"C\" test_c(" ++ argList ++ ");"
     , "  return (%zx64(ret));"
     , "}"

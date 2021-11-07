@@ -3,8 +3,9 @@
 module Number
     ( Signedness(..)
     , signednessTag
+      -- * Fixed-width bit patterns
     , Number
-    , SomeNumber(..)
+    , numberWidth
     , toSigned
     , toUnsigned
     , fromSigned
@@ -18,6 +19,10 @@ module Number
     , zeroExtNumber
     , shiftRa, shiftRl
     , divNumber, remNumber
+      -- * Bit patterns of any width
+    , SomeNumber(..)
+    , someNumberWidth
+    , someNumberToUnsigned
     ) where
 
 import Data.Bits
@@ -48,8 +53,18 @@ instance Show (Number width) where
       | n < 10    = shows n
       | otherwise = showString "0x" . showHex n
 
+numberWidth :: forall width. (KnownWidth width)
+            => Number width -> Width
+numberWidth _ = knownWidth @width
+
 data SomeNumber where
     SomeNumber :: forall w. (KnownWidth w) => Number w -> SomeNumber
+
+someNumberWidth :: SomeNumber -> Width
+someNumberWidth (SomeNumber n) = numberWidth n
+
+someNumberToUnsigned :: SomeNumber -> Natural
+someNumberToUnsigned (SomeNumber n) = toUnsigned n
 
 instance Show SomeNumber where
     show (SomeNumber (n :: Number w)) =
