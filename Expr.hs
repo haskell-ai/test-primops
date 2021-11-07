@@ -370,12 +370,13 @@ exprToTree f e =
       EShrl   a b -> binOp ">>l" a b
       EShra   a b -> binOp ">>a" a b
       ENegate a   -> unOp "-" a
-      ENarrow (a :: Expr wide)    -> unOp (concat ["narrow<", show (knownWidth @wide), "->", show w, ">"]) a
-      ESignExt (a :: Expr narrow) -> unOp (concat ["sext<", show (knownWidth @narrow), "->", show w, ">"]) a
-      EZeroExt (a :: Expr narrow) -> unOp (concat ["zext<", show (knownWidth @narrow), "->", show w, ">"]) a
-      ELoad off   -> unOp (concat ["load<", show (knownWidth @width), ">"]) off
+      ENarrow (a :: Expr wide)    -> unOp (concat ["narrow[", show (knownWidth @wide), arrow, show w, "]"]) a
+      ESignExt (a :: Expr narrow) -> unOp (concat ["sext[", show (knownWidth @narrow), arrow, show w, "]"]) a
+      EZeroExt (a :: Expr narrow) -> unOp (concat ["zext[", show (knownWidth @narrow), arrow, show w, "]"]) a
+      ELoad off   -> unOp (concat ["load[", show (knownWidth @width), "]"]) off
       ELit a      -> leaf (show a <> "::" <> show (knownWidth @width))
   where
+    arrow = "→"
     w = knownWidth @width
     binOp :: forall w1 w2. (KnownWidth w1, KnownWidth w2)
           => String -> Expr w1 -> Expr w2 -> Tree (String, a)

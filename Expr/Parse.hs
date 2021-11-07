@@ -1,4 +1,7 @@
-module Expr.Parse (parseExpr) where
+module Expr.Parse
+    ( parseExpr
+    , prop_roundtrips
+    ) where
 
 import Control.Monad
 import Control.Monad.Trans.Except
@@ -10,6 +13,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void
+import Test.QuickCheck
 
 import Number
 import Width
@@ -50,7 +54,7 @@ operators =
     , unOp  "-"  ENegate
     ] ++
     narrowOps ++
-    --extendOps "sext" ESignExt ++
+    extendOps "sext" ESignExt ++
     extendOps "zext" EZeroExt ++
     map relOp allRelationalOps ++
     loadOps
@@ -112,7 +116,7 @@ operators =
         f :: forall width. (KnownWidth width)
           => Proxy width -> Operator Parser SomeExpr
         f _ = Prefix $ do
-            _ <- symbol ("load<" ++ show (knownWidth @width) ++ ">")
+            _ <- symbol ("load[" ++ show (knownWidth @width) ++ "]")
             return $ check1 @WordSize $ SomeExpr . ELoad @width
 
     relOp :: RelationalOp -> Operator Parser SomeExpr
@@ -134,7 +138,7 @@ operators =
         SomeWidth (narrow :: Proxy narrow) <- allWidths
         SomeWidth (wide :: Proxy wide) <- allWidths
         Just WiderThanProof <- pure $ wide `isWiderThan` narrow
-        let tok = concat ["narrow<", show (knownWidth @wide), "->", show (knownWidth @narrow), ">"]
+        let tok = concat ["narrow[", show (knownWidth @wide), "→", show (knownWidth @narrow), "]"]
         return $ fixedWidthUnOp tok (ENarrow @wide @narrow)
 
     extendOps
@@ -145,7 +149,7 @@ operators =
         SomeWidth (narrow :: Proxy narrow) <- allWidths
         SomeWidth (wide :: Proxy wide) <- allWidths
         Just WiderThanProof <- pure $ wide `isWiderThan` narrow
-        let tok = concat [op, "<", show (knownWidth @wide), "->", show (knownWidth @narrow), ">"]
+        let tok = concat [op, "[", show (knownWidth @narrow), "→", show (knownWidth @wide), "]"]
         return $ fixedWidthUnOp tok (k @wide @narrow)
 
 forAllWidths :: (forall w. (KnownWidth w) => Proxy w -> r) -> [r]
@@ -178,3 +182,10 @@ symbol = L.symbol spaceC
 
 parens :: Parser SomeExpr -> Parser SomeExpr
 parens = between (symbol "(") (symbol ")")
+
+prop_roundtrips
+    :: SomeExpr -> Property
+prop_roundtrips (SomeExpr e) = property $ maybe False (== show e) $ do
+    SomeExpr e' <- pure $ parseExpr (show e)
+    Refl <- e `isSameWidth` e'
+    return (show e')
