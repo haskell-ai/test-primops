@@ -18,11 +18,15 @@ ghcInterpreter e =
   where
     ghcArgs = ["-O0", "-dcmm-lint", "-dasm-lint"]
 
-ghcDynInterpreter :: Interpreter W64
-ghcDynInterpreter e =
+ghcDynInterpreter' :: [String] -> Interpreter W64
+ghcDynInterpreter' ghcArgs e =
     fromUnsigned <$> evalGhcDyn ghcArgs e
-  where
-    ghcArgs = ["-O0", "-dcmm-lint", "-dasm-lint", "-ddump-cmm"]
+
+ghcDynInterpreter :: Interpreter W64
+ghcDynInterpreter = ghcDynInterpreter' ["-O0", "-dcmm-lint", "-dasm-lint"]
+
+ghcDynLlvmInterpreter :: Interpreter W64
+ghcDynLlvmInterpreter = ghcDynInterpreter' ["-O0", "-dcmm-lint", "-dasm-lint", "-fllvm"]
 
 -- | Do two interpreters agree in their evaluation of the given expression?
 agree
