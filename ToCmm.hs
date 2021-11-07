@@ -6,6 +6,9 @@ module ToCmm
     , evalCmm
     , toCmmDecl
     , exprToCmm
+      -- * Utilities
+    , commaList
+    , parens
     ) where
 
 import qualified Data.ByteString as BS

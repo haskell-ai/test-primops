@@ -84,13 +84,13 @@ data CallishOp args result
               }
 
 class CmmArgs arg where
-    argsToCmm :: arg -> String
+    getArgs :: arg -> [SomeExpr]
 
 instance (CmmArgs a, CmmArgs b) => CmmArgs (a,b) where
-    argsToCmm (a,b) = concat ["(", argsToCmm a, ", ", argsToCmm b, ")"]
+    getArgs (a,b) = getArgs a ++ getArgs b
 
 instance (KnownWidth w) => CmmArgs (Expr w) where
-    argsToCmm a = concat ["(", exprToCmm a, ")"]
+    getArgs a = [SomeExpr a]
 
 evalCallish
     :: forall args. (CmmArgs args)
@@ -100,10 +100,11 @@ evalCallish
 evalCallish op args =
     fromUnsigned <$> evalCmm gHC_PATH ["-dcmm-lint"] cmm
   where
+    argList = parens $ commaList [exprToCmm e | SomeExpr e <- getArgs args]
     cmm = unlines
         [ "test ( bits64 buffer ) {"
         , "  bits64 ret;"
-        , "  (ret) = prim " ++ name op ++ argsToCmm args ++ ";"
+        , "  (ret) = prim " ++ name op ++ argList ++ ";"
         , "  return (ret);"
         , "}"
         ]
