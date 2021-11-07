@@ -6,6 +6,7 @@ module CallishOp
     , prop_callish_correct
       -- * Evaluating callish machops
     , evalCallishOp
+    , evalCallishOpCmm
     ) where
 
 import Numeric.Natural
