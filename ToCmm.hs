@@ -5,7 +5,7 @@ module ToCmm
     , evalGhcDyn
     , evalCmm
     , toCmmDecl
-    , toCmmExpr
+    , exprToCmm
     ) where
 
 import qualified Data.ByteString as BS
@@ -47,7 +47,7 @@ toCmmDecl name e = unlines
     [ name <> " ( bits64 buffer )"
     , "{"
     , "  bits64 ret;"
-    , "  ret = " <> toCmmExpr e <> ";"
+    , "  ret = " <> exprToCmm e <> ";"
     , "  return (ret);"
     , "}"
     ]
@@ -58,7 +58,7 @@ zeroExtOp w = "%zx" <> show (widthBits w)
 signExtOp w = "%sx" <> show (widthBits w)
 
 machOp :: String -> [String] -> String
-machOp op args = op <> parens (intercalate "," args)
+machOp op args = op <> parens (commaList args)
 
 cmmRelOp :: RelationalOp -> String
 cmmRelOp op =
@@ -73,30 +73,30 @@ cmmRelOp op =
     signed Signed = id
     signed Unsigned = (++"u")
 
-toCmmExpr :: forall width. KnownWidth width => Expr width -> String
-toCmmExpr e =
+exprToCmm :: forall width. KnownWidth width => Expr width -> String
+exprToCmm e =
     case e of
-      ERel op a b -> machOp (cmmRelOp op) [toCmmExpr a, toCmmExpr b]
+      ERel op a b -> machOp (cmmRelOp op) [exprToCmm a, exprToCmm b]
       EAdd    a b -> binOp "+" a b
       ESub    a b -> binOp "-" a b
       EMul    a b -> binOp "*" a b
-      EQuot s a b -> machOp (quotOp s)    [toCmmExpr a, toCmmExpr b]
-      ERem  s a b -> machOp (remOp s)     [toCmmExpr a, toCmmExpr b]
+      EQuot s a b -> machOp (quotOp s)    [exprToCmm a, exprToCmm b]
+      ERem  s a b -> machOp (remOp s)     [exprToCmm a, exprToCmm b]
       EAnd    a b -> binOp "&" a b
       EOr     a b -> binOp "|" a b
       EXOr    a b -> binOp "^" a b
-      ENot    a   -> parens $ "~" <> toCmmExpr a
-      EShl    a b -> machOp "%shl"        [toCmmExpr a, toCmmExpr b]
-      EShrl   a b -> machOp "%shrl"       [toCmmExpr a, toCmmExpr b]
-      EShra   a b -> machOp "%shra"       [toCmmExpr a, toCmmExpr b]
-      ENegate a   -> machOp "%neg"        [toCmmExpr a]
-      ENarrow a   -> machOp (narrowOp  w) [toCmmExpr a]
-      ESignExt a  -> machOp (signExtOp w) [toCmmExpr a]
-      EZeroExt a  -> machOp (zeroExtOp w) [toCmmExpr a]
-      ELoad off   -> cmmType w <> braces ("buffer + " <> toCmmExpr off)
+      ENot    a   -> parens $ "~" <> exprToCmm a
+      EShl    a b -> machOp "%shl"        [exprToCmm a, exprToCmm b]
+      EShrl   a b -> machOp "%shrl"       [exprToCmm a, exprToCmm b]
+      EShra   a b -> machOp "%shra"       [exprToCmm a, exprToCmm b]
+      ENegate a   -> machOp "%neg"        [exprToCmm a]
+      ENarrow a   -> machOp (narrowOp  w) [exprToCmm a]
+      ESignExt a  -> machOp (signExtOp w) [exprToCmm a]
+      EZeroExt a  -> machOp (zeroExtOp w) [exprToCmm a]
+      ELoad off   -> cmmType w <> braces ("buffer + " <> exprToCmm off)
       ELit n      -> parens $ unwords [show (toSigned n), "::", cmmType (knownWidth @width)]
   where
-    binOp op a b = parens $ unwords [toCmmExpr a, op, toCmmExpr b]
+    binOp op a b = parens $ unwords [exprToCmm a, op, exprToCmm b]
     w = knownWidth @width
     quotOp Unsigned = "%divu"
     quotOp Signed   = "%quot"
@@ -106,6 +106,9 @@ toCmmExpr e =
 parens, braces :: String -> String
 parens s = concat ["(", s, ")"]
 braces s = concat ["[", s, "]"]
+
+commaList :: [String] -> String
+commaList = intercalate ","
 
 createBufferFile :: IO ()
 createBufferFile = do
