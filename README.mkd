@@ -2,3 +2,12 @@
 
 This is a QuickCheck-based testsuite for GHC's C-- pipeline and
 native code generation backends.
+
+## TODO
+
+ * [x] test machops
+ * [ ] test callish machops
+ * [ ] test ccalls
+ * [ ] test stores
+ * [ ] batch testing of expressions
+ * [x] test `Expr` parser roundtripping
