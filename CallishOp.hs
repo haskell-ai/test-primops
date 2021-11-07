@@ -12,8 +12,8 @@ import ToCmm
 import Number
 import Expr
 
-prop_callishs_correct :: Property
-prop_callishs_correct = conjoin $
+prop_callish_ops_correct :: Property
+prop_callish_ops_correct = conjoin $
     [ property $ prop_callish_correct (popcnt @w)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ] ++
@@ -24,15 +24,15 @@ prop_callishs_correct = conjoin $
     | SomeWidth (_ :: Proxy w) <- allWidths
     ]
 
-popcnt :: forall w. (KnownWidth w) => Callish (Expr w) WordSize
-popcnt = Callish
+popcnt :: forall w. (KnownWidth w) => CallishOp (Expr w) WordSize
+popcnt = CallishOp
     { name = "%popcnt" ++ show (widthBits (knownWidth @w))
     , refImpl = fromUnsigned . fromIntegral . popCount . toUnsigned . interpret
     }
 
 -- | Arguments are @(source, mask)@.
-pdep :: forall w. (KnownWidth w) => Callish (Expr w, Expr w) WordSize
-pdep = Callish
+pdep :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) WordSize
+pdep = CallishOp
     { name = "%pdep" ++ show (widthBits (knownWidth @w))
     , refImpl = uncurry ref
     }
@@ -48,8 +48,8 @@ pdep = Callish
         go _            []       = error "pdep: ran out of bits"
 
 -- | Arguments are @(source, mask)@.
-pext :: forall w. (KnownWidth w) => Callish (Expr w, Expr w) WordSize
-pext = Callish
+pext :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) WordSize
+pext = CallishOp
     { name = "%pext" ++ show (widthBits (knownWidth @w))
     , refImpl = uncurry ref
     }
@@ -71,15 +71,15 @@ fromBits bits = foldl' (.|.) 0 [ bit i | (i, True) <- zip [0..] bits ]
 
 prop_callish_correct
     :: forall args. (CmmArgs args)
-    => Callish args WordSize
+    => CallishOp args WordSize
     -> args
     -> Property
 prop_callish_correct op e = ioProperty $ do
     r <- evalCallish op e
     return $ refImpl op e === r
 
-data Callish args result
-    = Callish { name :: String
+data CallishOp args result
+    = CallishOp { name :: String
               , refImpl :: args -> Number result
               }
 
@@ -94,7 +94,7 @@ instance (KnownWidth w) => CmmArgs (Expr w) where
 
 evalCallish
     :: forall args. (CmmArgs args)
-    => Callish args WordSize
+    => CallishOp args WordSize
     -> args
     -> IO (Number WordSize)
 evalCallish op args =

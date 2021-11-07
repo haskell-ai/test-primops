@@ -6,7 +6,7 @@ native code generation backends.
 ## TODO
 
  * [x] test machops
- * [ ] test callish machops
+ * [x] test callish machops
  * [ ] test ccalls
  * [ ] test stores
  * [ ] batch testing of expressions
