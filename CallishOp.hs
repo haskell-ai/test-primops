@@ -1,4 +1,12 @@
-module CallishOp where
+-- | Correctness tests for callish Cmm MachOps.
+module CallishOp
+    ( prop_callish_ops_correct
+      -- * Individual tests
+    , popcnt, pdep, pext
+    , prop_callish_correct
+      -- * Evaluating callish machops
+    , evalCallishOp
+    ) where
 
 import Numeric.Natural
 import Data.Bits
@@ -76,7 +84,7 @@ prop_callish_correct
     -> args
     -> Property
 prop_callish_correct comp op e = ioProperty $ do
-    r <- evalCallish comp op e
+    r <- evalCallishOp comp op e
     return $ refImpl op e === r
 
 data CallishOp args result
@@ -93,21 +101,21 @@ instance (CmmArgs a, CmmArgs b) => CmmArgs (a,b) where
 instance (KnownWidth w) => CmmArgs (Expr w) where
     getArgs a = [SomeExpr a]
 
-evalCallish
+evalCallishOp
     :: forall args. (CmmArgs args)
     => Compiler
     -> CallishOp args WordSize
     -> args
     -> IO (Number WordSize)
-evalCallish comp op args =
-    fromUnsigned <$> evalCmm comp (evalCallishCmm op args)
+evalCallishOp comp op args =
+    fromUnsigned <$> evalCmm comp (evalCallishOpCmm op args)
 
-evalCallishCmm
+evalCallishOpCmm
     :: forall args. (CmmArgs args)
     => CallishOp args WordSize
     -> args
     -> String
-evalCallishCmm op args = unlines
+evalCallishOpCmm op args = unlines
     [ "test ( bits64 buffer ) {"
     , "  bits64 ret;"
     , "  (ret) = prim " ++ name op ++ argList ++ ";"

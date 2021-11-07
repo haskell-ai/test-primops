@@ -1,3 +1,4 @@
+-- | Tools for rendering 'Expr's to Cmm.
 module ToCmm
     ( createBufferFile
     , cmmType

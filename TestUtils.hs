@@ -7,7 +7,9 @@ import Number
 import Expr
 import RunGhc
 
-type Interpreter w = (KnownWidth w) => Expr w -> IO (Number w)
+-- | An interpreter reducing an 'Expr' to a 'Number'.
+type Interpreter w =
+    (KnownWidth w) => Expr w -> IO (Number w)
 
 refInterpreter :: Interpreter w
 refInterpreter = pure . interpret
@@ -20,7 +22,7 @@ ghcDynInterpreter' :: Compiler -> Interpreter W64
 ghcDynInterpreter' comp e =
     fromUnsigned <$> evalGhcDyn comp e
 
--- | Do two interpreters agree in their evaluation of the given expression?
+-- | Do two 'Interpreter's agree in their evaluation of the given expression?
 agree
     :: (KnownWidth width)
     => Interpreter width
@@ -32,6 +34,7 @@ agree interp1 interp2 e = ioProperty $ do
     r2 <- interp2 e
     return $ r1 === r2
 
+-- | Check that an 'Interpreter' successfully evaluates an expression.
 interpreterConverges
     :: (KnownWidth width)
     => Interpreter width

@@ -1,3 +1,4 @@
+-- | Cmm pipeline correctness testsuite.
 module Main where
 
 import Data.Proxy

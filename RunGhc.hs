@@ -1,3 +1,4 @@
+-- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
     ( Compiler(..)
     , evalGhcStatic

@@ -1,4 +1,8 @@
-module CCall where
+-- | Correctness test for C calling convention.
+module CCall
+    ( CCallDesc(..)
+    , testCCall
+    ) where
 
 import Numeric.Natural
 import System.FilePath
