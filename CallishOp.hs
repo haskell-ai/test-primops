@@ -14,6 +14,9 @@ import Expr
 
 prop_callishs_correct :: Property
 prop_callishs_correct = conjoin $
+    [ property $ prop_callish_correct (popcnt @w)
+    | SomeWidth (_ :: Proxy w) <- allWidths
+    ] ++
     [ property $ prop_callish_correct (pdep @w)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ] ++
