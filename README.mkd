@@ -7,7 +7,9 @@ native code generation backends.
 
 Simply invoke the `test-primops` executable, which is a standard `tasty`
 testsuite. The path to the compiler-under-test can be set using
-`--ghc-path=...`.
+`--ghc-path=...`. It is also necessary to compile the `run-it` executable with
+the compiler-under-test. The path to the this executable can be given using the
+`--run-it-path=...` flag.
 
 ## REPL usage
 

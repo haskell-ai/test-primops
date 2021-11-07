@@ -70,6 +70,13 @@ compilerTests name comp = testGroup name
       ]
     ]
 
+newtype RunItPath = RunItPath FilePath
+instance IsOption RunItPath where
+    defaultValue = RunItPath "run-it"
+    parseValue = Just . RunItPath
+    optionName = Tagged "run-it-path"
+    optionHelp = Tagged "Path to the run-it executable compiled with the compiler-under-test"
+
 newtype GhcPath = GhcPath FilePath
 instance IsOption GhcPath where
     defaultValue = GhcPath "ghc"
@@ -80,10 +87,12 @@ instance IsOption GhcPath where
 main :: IO ()
 main = do
     createBufferFile
-    let ing = defaultIngredients ++ [includingOptions [Option (Proxy @GhcPath)]]
+    let ing = defaultIngredients ++ [includingOptions [Option (Proxy @GhcPath), Option (Proxy @RunItPath)]]
     defaultMainWithIngredients ing
         $ askOption $ \(GhcPath ghcPath) ->
+          askOption $ \(RunItPath runItPath) ->
           testGroup "primops"
-        [ compilerTests name comp
+        [ compilerTests name comp'
         | (name, comp) <- compilerConfigs ghcPath
+        , let comp' = comp { compRunIt = runItPath }
         ]
