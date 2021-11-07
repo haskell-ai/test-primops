@@ -1,5 +1,6 @@
 module CallishOp where
 
+import Numeric.Natural
 import Data.Bits
 import Test.QuickCheck
 
@@ -8,24 +9,41 @@ import ToCmm
 import Number
 import Expr
 
-data Callish r where
-    Popcount :: forall w. (KnownWidth w) => Expr w -> Callish (Number WordSize)
+popcnt :: forall w. (KnownWidth w) => UnaryCallish w WordSize
+popcnt = UnaryCallish
+    { name = "%popcnt" ++ show (widthBits (knownWidth @w))
+    , refImpl = fromUnsigned . fromIntegral . popCount . toUnsigned
+    }
 
 
-prop_popcount_correct
+prop_unary_callish_correct
     :: forall w. (KnownWidth w)
-    => Expr w -> Property
-prop_popcount_correct e = ioProperty $ do
-    r <- evalCmm ["-dcmm-lint"] cmm
-    let r' = popCount $ toUnsigned $ interpret e
-    return $ r === fromIntegral r'
+    => UnaryCallish w WordSize
+    -> Expr w
+    -> Property
+prop_unary_callish_correct op e = ioProperty $ do
+    r <- evalUnaryCallish op e
+    return $ refImpl op (interpret e) === fromUnsigned r
+
+data UnaryCallish w r
+    = UnaryCallish { name :: String
+                   , refImpl :: Number w -> Number r
+                   }
+
+evalUnaryCallish
+    :: forall w. (KnownWidth w)
+    => UnaryCallish w WordSize
+    -> Expr w
+    -> IO Natural
+evalUnaryCallish op e =
+    evalCmm ["-dcmm-lint"] cmm
   where
     cmm = unlines
         [ "test ( bits64 buffer ) {"
         , "  bits64 ret;"
         , "  " ++ cmmType (knownWidth @w) ++ " x;"
         , "  x = " ++ exprToCmm e ++ ";"
-        , "  (ret) = prim %popcnt" ++ show (widthBits (knownWidth @w)) ++ "(x);"
+        , "  (ret) = prim " ++ name op ++ "(x);"
         , "  return (ret);"
         , "}"
         ]
