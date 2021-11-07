@@ -18,15 +18,20 @@ import CallishOp
 import CCall
 import RunGhc
 
+basicCompiler :: FilePath -> Compiler
+basicCompiler ghcPath =
+    Compiler ghcPath ["-dcmm-lint", "-dasm-lint", "-O0"]
+
 compilerConfigs :: FilePath -> [(String, Compiler)]
 compilerConfigs ghcPath =
-    [ ("o0-ncg",  Compiler ghcPath (["-O0"] ++ commonArgs))
-    , ("o1-ncg",  Compiler ghcPath (["-O1"] ++ commonArgs))
-    , ("o0-llvm", Compiler ghcPath (["-O0", "-fllvm"] ++ commonArgs))
-    , ("o1-llvm", Compiler ghcPath (["-O1", "-fllvm"] ++ commonArgs))
+    [ ("o0-ncg",  withArgs ["-O0"])
+    , ("o1-ncg",  withArgs ["-O1"])
+    , ("o0-llvm", withArgs ["-O0", "-fllvm"])
+    , ("o1-llvm", withArgs ["-O1", "-fllvm"])
     ]
   where
-    commonArgs = ["-dcmm-lint", "-dasm-lint"]
+    c0 = basicCompiler ghcPath
+    withArgs args = c0 { compArgs = compArgs c0 ++ args }
 
 -- * Properties
 
