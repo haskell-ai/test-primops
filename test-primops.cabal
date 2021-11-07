@@ -7,7 +7,11 @@ copyright:          (c) 2021 Ben Gamari
 
 executable test-primops
     main-is:          Main.hs
-    other-modules:    Width, Number, Expr, ToCmm, Parse
+    other-modules:    Width,
+                      Number,
+                      Expr,
+                      Expr.Parse,
+                      ToCmm
     build-depends:    base ^>=4.14.3.0,
                       bytestring,
                       containers,

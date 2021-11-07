@@ -1,4 +1,4 @@
-module Parse (parseExpr) where
+module Expr.Parse (parseExpr) where
 
 import Control.Monad
 import Control.Monad.Trans.Except
