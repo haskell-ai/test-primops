@@ -11,6 +11,7 @@ import ToCmm
 import TestUtils
 import CallishOp
 import CCall
+import RunGhc
 
 gHC_PATH :: FilePath
 gHC_PATH = "/opt/exp/ghc/ghc-8.10/_build/stage1/bin/ghc"
@@ -20,7 +21,7 @@ ghc = Compiler gHC_PATH ["-O0", "-dcmm-lint", "-dasm-lint"]
 ghcLlvm = Compiler gHC_PATH ["-fllvm", "-O0", "-dcmm-lint", "-dasm-lint"]
 
 ghcInterpreter :: Interpreter W64
-ghcInterpreter = ghcDynInterpreter' ghc 
+ghcInterpreter = ghcDynInterpreter' ghc
 
 -- * Properties
 
@@ -58,5 +59,5 @@ quotRemProp interp s a (NonZero b) = ioProperty $ do
 main :: IO ()
 main = do
     createBufferFile
-    quickCheckResult $ verbose (compiler_prop ghc)
+    quickCheck $ verbose (compiler_prop ghc)
     return ()

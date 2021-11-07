@@ -1,47 +1,19 @@
 module ToCmm
-    ( Compiler(..)
-    , createBufferFile
+    ( createBufferFile
     , cmmType
-    , evalGhcStatic
-    , evalGhcDyn
-    , evalCmm
     , toCmmDecl
     , exprToCmm
-    , compile
-    , runIt
       -- * Utilities
     , commaList
     , parens
     ) where
 
 import qualified Data.ByteString as BS
-import System.Exit
-import System.Process
-import System.IO.Temp
-import System.FilePath
 import Data.List (intercalate)
-import Numeric.Natural
 
 import Width
 import Number
 import Expr
-
-data Compiler = Compiler { compPath :: FilePath
-                         , compArgs :: [String]
-                         }
-
-hsType :: Width -> String
-hsType W8  = "Word8#"
-hsType W16 = "Word16#"
-hsType W32 = "Word32#"
-hsType W64 = "Word#"
-
-toHsWord :: Width -> String -> String
-toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
-  where
-    extendFn
-      | w == W64  = ""
-      | otherwise =  "extendWord" <> show (widthBits w) <> "#"
 
 cmmType :: Width -> String
 cmmType W8  = "bits8"
@@ -121,71 +93,3 @@ createBufferFile :: IO ()
 createBufferFile = do
     BS.writeFile "test" buffer
 
-compile :: Compiler
-        -> FilePath   -- ^ working directory
-        -> [FilePath] -- ^ sources
-        -> FilePath   -- ^ output path
-        -> [String]   -- ^ other arguments
-        -> IO ()
-compile comp workDir srcs out args = do
-    runProcess' $ inTmp (proc (compPath comp) allArgs)
-  where
-    allArgs = compArgs comp ++ srcs ++ args ++ ["-o", out]
-    inTmp c = c { cwd = Just workDir }
-    runProcess' p = do
-        (_, _, _, hdl) <- createProcess p
-        ExitSuccess <- waitForProcess hdl
-        return ()
-
-evalGhcStatic
-    :: forall width. (KnownWidth width)
-    => Compiler -> Expr width -> IO Natural
-evalGhcStatic comp e = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> hsSrc) $ unlines
-        [ "{-# LANGUAGE GHCForeignImportPrim #-}"
-        , "{-# LANGUAGE UnliftedFFITypes #-}"
-        , "{-# LANGUAGE MagicHash #-}"
-        , "module Main where"
-        , "import Data.Word"
-        , "import GHC.Exts"
-        , "import GHC.Ptr (Ptr(Ptr))"
-        , "import System.IO.MMap"
-        , "foreign import prim \"test\" test :: Addr# -> " <> hsType w
-        , "main :: IO ()"
-        , "main = do"
-        , "  (Ptr p, _, _, _) <- mmapFilePtr \"test\" ReadOnly Nothing"
-        , "  print $ " <> toHsWord w "test p"
-        ]
-    writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
-    compile comp tmpDir [cmmSrc, hsSrc] exeName []
-    out <- readProcess (tmpDir </> exeName) [] ""
-    return $ read out
-  where
-    w = knownWidth @width
-    exeName = "Test"
-    cmmSrc = "test-cmm.cmm"
-    hsSrc = "test-hs.hs"
-
-evalGhcDyn :: forall width. (KnownWidth width)
-           => Compiler -> Expr width -> IO Natural
-evalGhcDyn comp e = evalCmm comp $ toCmmDecl "test" e
-
-type Cmm = String
-
-runIt :: FilePath -> IO String
-runIt soName =
-    readProcess runnerName [soName] ""
-  where
-    runnerName = "run-it"
-
--- | Evaluate a Cmm function. Must be named @test@.
-evalCmm :: Compiler -> Cmm -> IO Natural
-evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> cmmSrc) cmm
-    let args = ["-dynamic", "-package-env", "-", "-shared"]
-    compile comp tmpDir [cmmSrc] soName args
-    out <- runIt (tmpDir </> soName)
-    return $ read out
-  where
-    soName = "Test.so"
-    cmmSrc = "test-cmm.cmm"

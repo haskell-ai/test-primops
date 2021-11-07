@@ -14,7 +14,8 @@ executable test-primops
                       TestUtils,
                       ToCmm,
                       CallishOp,
-                      CCall
+                      CCall,
+                      RunGhc
     build-depends:    base ^>=4.14.3.0,
                       bytestring,
                       containers,

@@ -7,8 +7,8 @@ import Test.QuickCheck
 
 import Width
 import ToCmm
+import RunGhc
 import Number
-import Expr
 
 data CCallDesc
     = CCallDesc { callRet :: SomeNumber

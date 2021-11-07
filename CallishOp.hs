@@ -7,6 +7,7 @@ import Test.QuickCheck
 import Data.Foldable (foldl')
 
 import Width
+import RunGhc
 import ToCmm
 import Number
 import Expr

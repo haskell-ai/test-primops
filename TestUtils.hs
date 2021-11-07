@@ -5,7 +5,7 @@ import Test.QuickCheck
 import Width
 import Number
 import Expr
-import ToCmm
+import RunGhc
 
 type Interpreter w = (KnownWidth w) => Expr w -> IO (Number w)
 
