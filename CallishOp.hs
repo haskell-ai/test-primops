@@ -7,20 +7,19 @@ import Test.QuickCheck
 import Data.Foldable (foldl')
 
 import Width
-import TestUtils
 import ToCmm
 import Number
 import Expr
 
-prop_callish_ops_correct :: Property
-prop_callish_ops_correct = conjoin $
-    [ property $ prop_callish_correct (popcnt @w)
+prop_callish_ops_correct :: Compiler -> Property
+prop_callish_ops_correct comp = conjoin $
+    [ property $ prop_callish_correct comp (popcnt @w)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ] ++
-    [ property $ prop_callish_correct (pdep @w)
+    [ property $ prop_callish_correct comp (pdep @w)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ] ++
-    [ property $ prop_callish_correct (pext @w)
+    [ property $ prop_callish_correct comp (pext @w)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ]
 
@@ -71,11 +70,12 @@ fromBits bits = foldl' (.|.) 0 [ bit i | (i, True) <- zip [0..] bits ]
 
 prop_callish_correct
     :: forall args. (CmmArgs args)
-    => CallishOp args WordSize
+    => Compiler
+    -> CallishOp args WordSize
     -> args
     -> Property
-prop_callish_correct op e = ioProperty $ do
-    r <- evalCallish op e
+prop_callish_correct comp op e = ioProperty $ do
+    r <- evalCallish comp op e
     return $ refImpl op e === r
 
 data CallishOp args result
@@ -94,11 +94,12 @@ instance (KnownWidth w) => CmmArgs (Expr w) where
 
 evalCallish
     :: forall args. (CmmArgs args)
-    => CallishOp args WordSize
+    => Compiler
+    -> CallishOp args WordSize
     -> args
     -> IO (Number WordSize)
-evalCallish op args =
-    fromUnsigned <$> evalCmm gHC_PATH ["-dcmm-lint"] (evalCallishCmm op args)
+evalCallish comp op args =
+    fromUnsigned <$> evalCmm comp (evalCallishCmm op args)
 
 evalCallishCmm
     :: forall args. (CmmArgs args)

@@ -1,7 +1,8 @@
 module ToCmm
-    ( createBufferFile
+    ( Compiler(..)
+    , createBufferFile
     , cmmType
-    , evalGhc
+    , evalGhcStatic
     , evalGhcDyn
     , evalCmm
     , toCmmDecl
@@ -24,6 +25,10 @@ import Numeric.Natural
 import Width
 import Number
 import Expr
+
+data Compiler = Compiler { compPath :: FilePath
+                         , compArgs :: [String]
+                         }
 
 hsType :: Width -> String
 hsType W8  = "Word8#"
@@ -116,24 +121,26 @@ createBufferFile :: IO ()
 createBufferFile = do
     BS.writeFile "test" buffer
 
-compile :: FilePath   -- ^ GHC path
+compile :: Compiler
         -> FilePath   -- ^ working directory
         -> [FilePath] -- ^ sources
         -> FilePath   -- ^ output path
         -> [String]   -- ^ other arguments
         -> IO ()
-compile ghcPath workDir srcs out args = do
-    runProcess' $ inTmp (proc ghcPath $ srcs ++ args ++ ["-o", out])
+compile comp workDir srcs out args = do
+    runProcess' $ inTmp (proc (compPath comp) allArgs)
   where
+    allArgs = compArgs comp ++ srcs ++ args ++ ["-o", out]
     inTmp c = c { cwd = Just workDir }
     runProcess' p = do
         (_, _, _, hdl) <- createProcess p
         ExitSuccess <- waitForProcess hdl
         return ()
 
-evalGhc :: forall width. (KnownWidth width)
-        => FilePath -> [String] -> Expr width -> IO Natural
-evalGhc ghcPath ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalGhcStatic
+    :: forall width. (KnownWidth width)
+    => Compiler -> Expr width -> IO Natural
+evalGhcStatic comp e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
@@ -150,7 +157,7 @@ evalGhc ghcPath ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "  print $ " <> toHsWord w "test p"
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
-    compile ghcPath tmpDir [cmmSrc, hsSrc] exeName ghcArgs
+    compile comp tmpDir [cmmSrc, hsSrc] exeName []
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
   where
@@ -160,8 +167,8 @@ evalGhc ghcPath ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
     hsSrc = "test-hs.hs"
 
 evalGhcDyn :: forall width. (KnownWidth width)
-           => FilePath -> [String] -> Expr width -> IO Natural
-evalGhcDyn ghcPath ghcArgs e = evalCmm ghcPath ghcArgs $ toCmmDecl "test" e
+           => Compiler -> Expr width -> IO Natural
+evalGhcDyn comp e = evalCmm comp $ toCmmDecl "test" e
 
 type Cmm = String
 
@@ -172,11 +179,11 @@ runIt soName =
     runnerName = "run-it"
 
 -- | Evaluate a Cmm function. Must be named @test@.
-evalCmm :: FilePath -> [String] -> Cmm -> IO Natural
-evalCmm ghcPath ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalCmm :: Compiler -> Cmm -> IO Natural
+evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
-    let ghcArgs' = ghcArgs ++ ["-dynamic", "-package-env", "-", "-shared"]
-    compile ghcPath tmpDir [cmmSrc] soName ghcArgs'
+    let args = ["-dynamic", "-package-env", "-", "-shared"]
+    compile comp tmpDir [cmmSrc] soName args
     out <- runIt (tmpDir </> soName)
     return $ read out
   where

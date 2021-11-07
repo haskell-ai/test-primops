@@ -10,7 +10,7 @@ import ToCmm
 import Number
 import Expr
 
-data CCallDesc 
+data CCallDesc
     = CCallDesc { callRet :: SomeNumber
                 , callArgs :: [SomeNumber]
                 }
@@ -30,14 +30,14 @@ instance Arbitrary CCallDesc where
         return $ CCallDesc ret args
 
 testCCall
-    :: FilePath  -- ^ GHC path
+    :: Compiler
     -> CCallDesc
     -> Property
-testCCall ghcPath c = 
+testCCall comp c = 
     ioProperty $ withTempDirectory "." "tmp" $ \tmpDir -> do
         writeFile (tmpDir </> "test_c.c") (cStub c)
         writeFile (tmpDir </> "test.cmm") (cCallCmm c)
-        compile ghcPath tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
+        compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
         out <- runIt (tmpDir </> soName)
         let saw :: [Natural]
             saw = map read (lines out)
