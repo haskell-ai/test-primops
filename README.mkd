@@ -3,6 +3,12 @@
 This is a QuickCheck-based testsuite for GHC's C-- pipeline and
 native code generation backends.
 
+## Command-line usage
+
+Simply invoke the `test-primops` executable, which is a standard `tasty`
+testsuite. The path to the compiler-under-test can be set using
+`--ghc-path=...`.
+
 ## REPL usage
 
 It can often be useful to load the `test-primops` executable into GHCi.
