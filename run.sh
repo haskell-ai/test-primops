@@ -1,5 +1,7 @@
 #!/usr/bin/env ghc
 
+set -e -o pipefail
+
 BOOT_GHC="${BOOT_GHC:-ghc}"
 TEST_GHC="${TEST_GHC:-ghc}"
 
