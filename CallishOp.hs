@@ -16,7 +16,7 @@ popcnt = Callish
     , refImpl = fromUnsigned . fromIntegral . popCount . toUnsigned . interpret
     }
 
--- | Arguments are @(mask, source)@.
+-- | Arguments are @(source, mask)@.
 pdep :: forall w. (KnownWidth w) => Callish (Expr w, Expr w) WordSize
 pdep = Callish
     { name = "%pdep" ++ show (widthBits (knownWidth @w))
@@ -24,7 +24,7 @@ pdep = Callish
     }
   where
     ref :: Expr w -> Expr w -> Number WordSize
-    ref mask0 x0 = fromUnsigned $ fromBits $ go (exprBits mask0) (exprBits x0)
+    ref x0 mask0 = fromUnsigned $ fromBits $ go (exprBits mask0) (exprBits x0)
       where
         exprBits = toBits . interpret
 
@@ -33,7 +33,7 @@ pdep = Callish
         go []           _        = []
         go _            []       = error "pdep: ran out of bits"
 
--- | Arguments are @(mask, source)@.
+-- | Arguments are @(source, mask)@.
 pext :: forall w. (KnownWidth w) => Callish (Expr w, Expr w) WordSize
 pext = Callish
     { name = "%pext" ++ show (widthBits (knownWidth @w))
@@ -41,7 +41,7 @@ pext = Callish
     }
   where
     ref :: Expr w -> Expr w -> Number WordSize
-    ref mask x =
+    ref x mask =
         fromUnsigned
         $ fromBits
         [ b | (True, b) <- zip (exprBits mask) (exprBits x) ]
