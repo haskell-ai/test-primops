@@ -7,52 +7,25 @@ import Width
 import Number
 import Expr
 import ToCmm
-
-type Interpreter w = (KnownWidth w) => Expr w -> IO (Number w)
-
-refInterpreter :: Interpreter w
-refInterpreter = pure . interpret
-
-ghcInterpreter :: Interpreter W64
-ghcInterpreter e =
-    fromUnsigned <$> evalGhc ghcArgs e
-  where
-    ghcArgs = ["-O0", "-dcmm-lint", "-dasm-lint"]
-
-ghcDynInterpreter :: Interpreter W64
-ghcDynInterpreter e =
-    fromUnsigned <$> evalGhcDyn ghcArgs e
-  where
-    ghcArgs = ["-O0", "-dcmm-lint", "-dasm-lint"]
+import TestUtils
 
 prop :: KnownWidth W64 => Expr W64 -> Property
 prop e = conjoin
-    [ interpreterConverges e
+    [ interpreterConverges refInterpreter e
     , agree refInterpreter ghcDynInterpreter e
     ]
 
-interpreterConverges :: KnownWidth width => Expr width -> Property
-interpreterConverges e =
-    property $ interpret e `seq` True
+divAgrees =
+    verbose $ \s x (NonZero y) -> 
+        agree refInterpreter ghcDynInterpreter $ EQuot @W64 s (ELit x) (ELit y)
 
--- | Do two interpreters agree in their evaluation of the given expression?
-agree
+quotRemProp
     :: (KnownWidth width)
-    => Interpreter width
-    -> Interpreter width
-    -> Expr width
+    => Interpreter WordSize
+    -> Signedness
+    -> Number width            -- ^ dividend
+    -> NonZero (Number width)  -- ^ divisor
     -> Property
-agree interp1 interp2 e = ioProperty $ do
-    r1 <- interp1 e
-    r2 <- interp2 e
-    return $ r1 === r2
-
-quotRemProp :: (KnownWidth width)
-           => Interpreter WordSize
-           -> Signedness
-           -> Number width            -- ^ dividend
-           -> NonZero (Number width)  -- ^ divisor
-           -> Property
 quotRemProp interp s a (NonZero b) = ioProperty $ do
     r <- interp (ERel REq x rhs)
     return $ r === 1
