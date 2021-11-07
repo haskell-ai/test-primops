@@ -2,8 +2,11 @@
 module Main where
 
 import Data.Proxy
+import Data.Tagged
 import Test.QuickCheck
-import System.Environment (getArgs)
+import Test.Tasty
+import Test.Tasty.Options
+import Test.Tasty.QuickCheck
 import Prelude hiding (truncate)
 
 import Width
@@ -15,14 +18,12 @@ import CallishOp
 import CCall
 import RunGhc
 
-gHC_PATH :: FilePath
-gHC_PATH = "/opt/exp/ghc/ghc-8.10/_build/stage1/bin/ghc"
-
-compilerConfigs :: FilePath -> [Compiler]
+compilerConfigs :: FilePath -> [(String, Compiler)]
 compilerConfigs ghcPath =
-    [ Compiler ghcPath (["-O0"] ++ commonArgs)
-    , Compiler ghcPath (["-O1"] ++ commonArgs)
-    , Compiler ghcPath (["-O1", "-fllvm"] ++ commonArgs)
+    [ ("o0-ncg",  Compiler ghcPath (["-O0"] ++ commonArgs))
+    , ("o1-ncg",  Compiler ghcPath (["-O1"] ++ commonArgs))
+    , ("o0-llvm", Compiler ghcPath (["-O0", "-fllvm"] ++ commonArgs))
+    , ("o1-llvm", Compiler ghcPath (["-O1", "-fllvm"] ++ commonArgs))
     ]
   where
     commonArgs = ["-dcmm-lint", "-dasm-lint"]
@@ -33,16 +34,6 @@ expr_prop :: Compiler -> Expr W64 -> Property
 expr_prop comp e = conjoin
     [ converges refInterpreter e
     , agree refInterpreter (ghcDynInterpreter' comp) e
-    ]
-
-compiler_prop :: Compiler -> Property
-compiler_prop comp = conjoin
-    [ property (expr_prop comp)
-    , prop_callish_ops_correct comp
-    , property $ testCCall comp
-    , conjoin [ property $ quotRemProp @w (ghcDynInterpreter' comp)
-              | SomeWidth (_ :: Proxy w) <- allWidths
-              ]
     ]
 
 quotRemProp
@@ -60,9 +51,32 @@ quotRemProp interp s a (NonZero b) = ioProperty $ do
     y = ELit b
     rhs = ((EQuot s x y) * y) + ERem s x y
 
+compilerTests :: String -> Compiler -> TestTree
+compilerTests name comp = testGroup name
+    [ testProperty "expression correctness" (expr_prop comp)
+    , testProperty "callish correctness" (prop_callish_ops_correct comp)
+    , testProperty "C-Call correctness" (testCCall comp)
+    , testGroup "Quot-Rem invariant"
+      [ testProperty (show (knownWidth @w))
+        $ quotRemProp @w (ghcDynInterpreter' comp)
+      | SomeWidth (_ :: Proxy w) <- allWidths
+      ]
+    ]
+
+newtype GhcPath = GhcPath FilePath
+instance IsOption GhcPath where
+    defaultValue = GhcPath "ghc"
+    parseValue = Just . GhcPath
+    optionName = Tagged "ghc-path"
+    optionHelp = Tagged "Path to compiler to test"
+
 main :: IO ()
 main = do
-    [ghcPath] <- getArgs
     createBufferFile
-    quickCheck $ verbose $ conjoin $ map compiler_prop (compilerConfigs ghcPath)
-    return ()
+    let ing = defaultIngredients ++ [includingOptions [Option (Proxy @GhcPath)]]
+    defaultMainWithIngredients ing
+        $ askOption $ \(GhcPath ghcPath) ->
+          testGroup "primops"
+        [ compilerTests name comp
+        | (name, comp) <- compilerConfigs ghcPath
+        ]

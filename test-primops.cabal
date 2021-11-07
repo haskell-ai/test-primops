@@ -21,16 +21,19 @@ executable test-primops
                       CCall,
                       RunGhc
     build-depends:    base ^>=4.14.3.0,
+                      QuickCheck,
                       bytestring,
                       containers,
                       directory,
-                      process,
-                      temporary,
-                      parser-combinators,
-                      transformers,
-                      megaparsec,
                       filepath,
-                      QuickCheck
+                      megaparsec,
+                      parser-combinators,
+                      process,
+                      tagged,
+                      tasty,
+                      tasty-quickcheck,
+                      temporary,
+                      transformers
     build-tool-depends: run-it:run-it
     ghc-options:      -Wall -Wno-unticked-promoted-constructors
     default-extensions:
