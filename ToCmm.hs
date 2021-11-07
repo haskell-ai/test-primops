@@ -109,6 +109,20 @@ createBufferFile :: IO ()
 createBufferFile = do
     BS.writeFile "test" buffer
 
+compile :: FilePath   -- ^ working directory
+        -> [FilePath] -- ^ sources
+        -> FilePath   -- ^ output path
+        -> [String]   -- ^ other arguments
+        -> IO ()
+compile workDir srcs out args = do
+    runProcess' $ inTmp (proc ghcPath $ srcs ++ args ++ ["-o", out])
+  where
+    inTmp c = c { cwd = Just workDir }
+    runProcess' p = do
+        (_, _, _, hdl) <- createProcess p
+        ExitSuccess <- waitForProcess hdl
+        return ()
+
 evalGhc :: forall width. (KnownWidth width)
         => [String] -> Expr width -> IO Natural
 evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
@@ -128,34 +142,29 @@ evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "  print $ " <> toHsWord w "test p"
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
-    let inTmp c = c { cwd = Just tmpDir }
-    runProcess' $ inTmp (proc ghcPath $ ghcArgs ++ [hsSrc, cmmSrc, "-o", exeName])
+    compile tmpDir [cmmSrc, hsSrc] exeName ghcArgs
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
   where
     w = knownWidth @width
-    runProcess' p = do
-        (_, _, _, hdl) <- createProcess p
-        ExitSuccess <- waitForProcess hdl
-        return ()
     exeName = "Test"
     cmmSrc = "test-cmm.cmm"
     hsSrc = "test-hs.hs"
 
 evalGhcDyn :: forall width. (KnownWidth width)
            => [String] -> Expr width -> IO Natural
-evalGhcDyn ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
-    let inTmp c = c { cwd = Just tmpDir }
-    let ghcArgs' = ghcArgs ++ ["-package-env", "-", "-shared", "-o", soName, cmmSrc]
-    runProcess' $ inTmp (proc ghcPath ghcArgs')
+evalGhcDyn ghcArgs e = evalCmm ghcArgs $ toCmmDecl "test" e
+
+type Cmm = String
+
+evalCmm :: [String] -> Cmm -> IO Natural
+evalCmm ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
+    writeFile (tmpDir </> cmmSrc) cmm
+    let ghcArgs' = ghcArgs ++ ["-package-env", "-", "-shared"]
+    compile tmpDir [cmmSrc] soName ghcArgs'
     out <- readProcess runnerName [tmpDir </> soName] ""
     return $ read out
   where
     runnerName = "run-it"
-    runProcess' p = do
-        (_, _, _, hdl) <- createProcess p
-        ExitSuccess <- waitForProcess hdl
-        return ()
     soName = "Test.so"
     cmmSrc = "test-cmm.cmm"
