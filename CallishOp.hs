@@ -90,7 +90,7 @@ instance (CmmArgs a, CmmArgs b) => CmmArgs (a,b) where
     argsToCmm (a,b) = concat ["(", argsToCmm a, ", ", argsToCmm b, ")"]
 
 instance (KnownWidth w) => CmmArgs (Expr w) where
-    argsToCmm a = exprToCmm a
+    argsToCmm a = concat ["(", exprToCmm a, ")"]
 
 evalCallish
     :: forall args. (CmmArgs args)
