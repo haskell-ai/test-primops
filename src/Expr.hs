@@ -429,6 +429,6 @@ showExpr = showParenTree . fmap fst . exprToTree (const ())
 
 showInterpretedExpr
     :: forall width. (KnownWidth width)
-    => Expr width -> Tree String
+    => Expr width -> String
 showInterpretedExpr =
-    fmap (\(a,b) -> a ++ "\t\t" ++ show b) . exprToTree (toUnsigned . interpret)
+    drawTree . fmap (\(a,b) -> a ++ "\t\t" ++ show b) . exprToTree (SomeNumber . interpret)
