@@ -1,11 +1,27 @@
 -- | Bit widths
-module Width where
+module Width
+    ( -- * Width
+      Width(..)
+    , WordSize
+    , widthBits
+    , KnownWidth
+    , knownWidth
+    , extensions
+    , narrowings
+    , forAllWidths
+    , allWidths
+    , SomeWidth(..)
+    , truncate
+      -- * Comparing width
+    , WidthOrdering(..)
+    , WiderThan
+    , compareWidths
+    ) where
 
 import Data.Bits as Bits
 import Unsafe.Coerce
 import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
-import Data.Type.Equality
 import Prelude hiding (truncate)
 
 type WordSize = W64
@@ -87,5 +103,13 @@ allWidths =
     , SomeWidth (Proxy @W16)
     , SomeWidth (Proxy @W32)
     , SomeWidth (Proxy @W64)
+    ]
+
+forAllWidths :: (forall w. (KnownWidth w) => Proxy w -> r) -> [r]
+forAllWidths f =
+    [ f @W8  Proxy
+    , f @W16 Proxy
+    , f @W32 Proxy
+    , f @W64 Proxy
     ]
 

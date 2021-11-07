@@ -160,14 +160,6 @@ operators =
         let tok = concat [op, "[", show (knownWidth @narrow), "→", show (knownWidth @wide), "]"]
         return $ fixedWidthUnOp tok (k @wide @narrow)
 
-forAllWidths :: (forall w. (KnownWidth w) => Proxy w -> r) -> [r]
-forAllWidths f =
-    [ f @W8  Proxy
-    , f @W16 Proxy
-    , f @W32 Proxy
-    , f @W64 Proxy
-    ]
-
 lit :: Parser SomeExpr
 lit = choice $ forAllWidths f
   where

@@ -21,7 +21,6 @@ module Expr
     ) where
 
 import Data.Foldable (foldl')
-import Data.Type.Equality
 import qualified Data.ByteString as BS
 import Numeric.Natural
 import Control.Monad
