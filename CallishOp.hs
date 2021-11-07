@@ -6,6 +6,7 @@ import Test.QuickCheck
 import Data.Foldable (foldl')
 
 import Width
+import TestUtils
 import ToCmm
 import Number
 import Expr
@@ -84,7 +85,7 @@ evalCallish
     -> args
     -> IO (Number WordSize)
 evalCallish op args =
-    fromUnsigned <$> evalCmm ["-dcmm-lint"] cmm
+    fromUnsigned <$> evalCmm gHC_PATH ["-dcmm-lint"] cmm
   where
     cmm = unlines
         [ "test ( bits64 buffer ) {"

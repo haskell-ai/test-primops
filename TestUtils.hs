@@ -7,6 +7,9 @@ import Number
 import Expr
 import ToCmm
 
+gHC_PATH :: FilePath
+gHC_PATH = "/opt/exp/ghc/ghc-8.10/_build/stage1/bin/ghc"
+
 type Interpreter w = (KnownWidth w) => Expr w -> IO (Number w)
 
 refInterpreter :: Interpreter w
@@ -14,19 +17,19 @@ refInterpreter = pure . interpret
 
 ghcInterpreter :: Interpreter W64
 ghcInterpreter e =
-    fromUnsigned <$> evalGhc ghcArgs e
+    fromUnsigned <$> evalGhc gHC_PATH ghcArgs e
   where
     ghcArgs = ["-O0", "-dcmm-lint", "-dasm-lint"]
 
-ghcDynInterpreter' :: [String] -> Interpreter W64
-ghcDynInterpreter' ghcArgs e =
-    fromUnsigned <$> evalGhcDyn ghcArgs e
+ghcDynInterpreter' :: FilePath -> [String] -> Interpreter W64
+ghcDynInterpreter' ghcPath ghcArgs e =
+    fromUnsigned <$> evalGhcDyn ghcPath ghcArgs e
 
 ghcDynInterpreter :: Interpreter W64
-ghcDynInterpreter = ghcDynInterpreter' ["-O0", "-dcmm-lint", "-dasm-lint"]
+ghcDynInterpreter = ghcDynInterpreter' gHC_PATH ["-O0", "-dcmm-lint", "-dasm-lint"]
 
 ghcDynLlvmInterpreter :: Interpreter W64
-ghcDynLlvmInterpreter = ghcDynInterpreter' ["-O0", "-dcmm-lint", "-dasm-lint", "-fllvm"]
+ghcDynLlvmInterpreter = ghcDynInterpreter' gHC_PATH ["-O0", "-dcmm-lint", "-dasm-lint", "-fllvm"]
 
 -- | Do two interpreters agree in their evaluation of the given expression?
 agree

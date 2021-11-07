@@ -20,9 +20,6 @@ import Width
 import Number
 import Expr
 
-ghcPath :: FilePath
-ghcPath = "ghc"
-
 hsType :: Width -> String
 hsType W8  = "Word8#"
 hsType W16 = "Word16#"
@@ -114,12 +111,13 @@ createBufferFile :: IO ()
 createBufferFile = do
     BS.writeFile "test" buffer
 
-compile :: FilePath   -- ^ working directory
+compile :: FilePath   -- ^ GHC path
+        -> FilePath   -- ^ working directory
         -> [FilePath] -- ^ sources
         -> FilePath   -- ^ output path
         -> [String]   -- ^ other arguments
         -> IO ()
-compile workDir srcs out args = do
+compile ghcPath workDir srcs out args = do
     runProcess' $ inTmp (proc ghcPath $ srcs ++ args ++ ["-o", out])
   where
     inTmp c = c { cwd = Just workDir }
@@ -129,8 +127,8 @@ compile workDir srcs out args = do
         return ()
 
 evalGhc :: forall width. (KnownWidth width)
-        => [String] -> Expr width -> IO Natural
-evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
+        => FilePath -> [String] -> Expr width -> IO Natural
+evalGhc ghcPath ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
@@ -147,7 +145,7 @@ evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "  print $ " <> toHsWord w "test p"
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
-    compile tmpDir [cmmSrc, hsSrc] exeName ghcArgs
+    compile ghcPath tmpDir [cmmSrc, hsSrc] exeName ghcArgs
     out <- readProcess (tmpDir </> exeName) [] ""
     return $ read out
   where
@@ -157,17 +155,17 @@ evalGhc ghcArgs e = withTempDirectory "." "tmp" $ \tmpDir -> do
     hsSrc = "test-hs.hs"
 
 evalGhcDyn :: forall width. (KnownWidth width)
-           => [String] -> Expr width -> IO Natural
-evalGhcDyn ghcArgs e = evalCmm ghcArgs $ toCmmDecl "test" e
+           => FilePath -> [String] -> Expr width -> IO Natural
+evalGhcDyn ghcPath ghcArgs e = evalCmm ghcPath ghcArgs $ toCmmDecl "test" e
 
 type Cmm = String
 
 -- | Evaluate a Cmm function. Must be named @test@.
-evalCmm :: [String] -> Cmm -> IO Natural
-evalCmm ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalCmm :: FilePath -> [String] -> Cmm -> IO Natural
+evalCmm ghcPath ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
     let ghcArgs' = ghcArgs ++ ["-dynamic", "-package-env", "-", "-shared"]
-    compile tmpDir [cmmSrc] soName ghcArgs'
+    compile ghcPath tmpDir [cmmSrc] soName ghcArgs'
     out <- readProcess runnerName [tmpDir </> soName] ""
     return $ read out
   where
