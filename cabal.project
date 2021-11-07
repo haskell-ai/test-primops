@@ -1,1 +1,4 @@
 packages: ., ./run-it
+
+package run-it
+  executable-dynamic: True

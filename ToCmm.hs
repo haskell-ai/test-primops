@@ -1,7 +1,9 @@
 module ToCmm
     ( createBufferFile
+    , cmmType
     , evalGhc
     , evalGhcDyn
+    , evalCmm
     , toCmmDecl
     , toCmmExpr
     ) where
@@ -157,10 +159,11 @@ evalGhcDyn ghcArgs e = evalCmm ghcArgs $ toCmmDecl "test" e
 
 type Cmm = String
 
+-- | Evaluate a Cmm function. Must be named @test@.
 evalCmm :: [String] -> Cmm -> IO Natural
 evalCmm ghcArgs cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
-    let ghcArgs' = ghcArgs ++ ["-package-env", "-", "-shared"]
+    let ghcArgs' = ghcArgs ++ ["-dynamic", "-package-env", "-", "-shared"]
     compile tmpDir [cmmSrc] soName ghcArgs'
     out <- readProcess runnerName [tmpDir </> soName] ""
     return $ read out
