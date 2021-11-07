@@ -24,14 +24,13 @@ basicCompiler ghcPath =
 
 compilerConfigs :: FilePath -> [(String, Compiler)]
 compilerConfigs ghcPath =
-    [ ("o0-ncg",  withArgs ["-O0"])
-    , ("o1-ncg",  withArgs ["-O1"])
-    , ("o0-llvm", withArgs ["-O0", "-fllvm"])
-    , ("o1-llvm", withArgs ["-O1", "-fllvm"])
+    [ ("o0-ncg",  c0 `addArgs` ["-O0"])
+    , ("o1-ncg",  c0 `addArgs` ["-O1"])
+    , ("o0-llvm", c0 `addArgs` ["-O0", "-fllvm"])
+    , ("o1-llvm", c0 `addArgs` ["-O1", "-fllvm"])
     ]
   where
     c0 = basicCompiler ghcPath
-    withArgs args = c0 { compArgs = compArgs c0 ++ args }
 
 -- * Properties
 

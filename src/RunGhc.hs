@@ -1,6 +1,7 @@
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
     ( Compiler(..)
+    , addArgs
     , evalGhcStatic
     , evalGhcDyn
     , evalCmm
@@ -22,6 +23,9 @@ import ToCmm
 data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
                          }
+
+addArgs :: Compiler -> [String] -> Compiler
+addArgs c args = c { compArgs = compArgs c ++ args }
 
 -- | Compile a set of compilation units.
 compile :: Compiler
