@@ -201,10 +201,22 @@ genExpr' _width = sized gen
             ++ arithmeticGens
             ++ bitwiseGens
             ++ shiftGens
-            ++ narrowings @width (\(_ :: Proxy narrow) -> EZeroExt <$> genExpr @narrow)
-            ++ narrowings @width (\(_ :: Proxy narrow) -> ESignExt <$> genExpr @narrow)
-            ++ extensions @width (\(_ :: Proxy wide)   -> ENarrow  <$> genExpr @wide)
+            ++ extensions
+            ++ narrows
             ++ relationalGens
+
+    narrows :: [Gen (Expr width)]
+    narrows = do
+        SomeWidth (_ :: Proxy src) <- allWidths
+        Wider <- pure $ Proxy @src `compareWidths` Proxy @width
+        return (ENarrow <$> genExpr @src)
+
+    extensions :: [Gen (Expr width)]
+    extensions = do
+        SomeWidth (_ :: Proxy src) <- allWidths
+        Narrower <- pure $ Proxy @src `compareWidths` Proxy @width
+        f <- [EZeroExt, ESignExt]
+        return (f <$> genExpr @src)
 
     litGen :: Gen (Expr width)
     litGen = ELit <$> arbitrary

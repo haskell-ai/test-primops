@@ -6,8 +6,6 @@ module Width
     , widthBits
     , KnownWidth
     , knownWidth
-    , extensions
-    , narrowings
     , forAllWidths
     , allWidths
     , SomeWidth(..)
@@ -40,29 +38,15 @@ widthBits W64 = 64
 
 class KnownWidth (width :: Width) where
     knownWidth :: Width
-    narrowings :: forall a.
-                  (forall narrow. (KnownWidth narrow, width `WiderThan` narrow) => Proxy narrow -> a)
-               -> [a]
-    extensions :: forall a.
-                  (forall wide. (KnownWidth wide, wide `WiderThan` width) => Proxy wide -> a)
-               -> [a]
 
 instance KnownWidth W8  where
     knownWidth = W8
-    narrowings _ = []
-    extensions f = [f @W16 Proxy, f @W32 Proxy, f @W64 Proxy]
 instance KnownWidth W16 where
     knownWidth = W16
-    narrowings f = [f @W8 Proxy]
-    extensions f = [f @W32 Proxy, f @W64 Proxy]
 instance KnownWidth W32 where
     knownWidth = W32
-    narrowings f = [f @W8 Proxy, f @W16 Proxy]
-    extensions f = [f @W64 Proxy]
 instance KnownWidth W64 where
     knownWidth = W64
-    narrowings f = [f @W8 Proxy, f @W16 Proxy, f @W32 Proxy]
-    extensions f = []
 
 class WiderThan wide narrow
 
