@@ -30,7 +30,7 @@ Below is a quick example showing some common tasks:
 λ> -- Check expression correctness
 λ> quickCheck $ expr_prop comp
 λ> -- Parse an expression (e.g. taken from the test output)
-λ> let e = Expr.Parse.parseExpr @W64 "zext[W16→W64](42::W16)"
+λ> let e = parseExpr @W64 "zext[W16→W64](42::W16)"
 λ> -- Evaluate the expression using the reference interpreter
 λ> interpret e
 42

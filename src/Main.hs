@@ -1,5 +1,8 @@
 -- | Cmm pipeline correctness testsuite.
-module Main where
+module Main
+    ( module Main
+    , parseExpr
+    ) where
 
 import Data.Proxy
 import Data.Tagged
@@ -17,6 +20,7 @@ import Interpreter
 import CallishOp
 import CCall
 import RunGhc
+import Expr.Parse
 
 basicCompiler :: FilePath -> Compiler
 basicCompiler ghcPath =
