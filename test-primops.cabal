@@ -20,7 +20,7 @@ executable test-primops
                       CallishOp,
                       CCall,
                       RunGhc
-    build-depends:    base ^>=4.14.3.0,
+    build-depends:    base,
                       QuickCheck,
                       bytestring,
                       containers,
