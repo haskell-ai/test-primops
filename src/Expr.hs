@@ -247,7 +247,7 @@ genExpr' _width = sized gen
     shiftGens :: [Gen (Expr width)]
     shiftGens =
         [ -- N.B. C--'s shift primops are undefined with shifts outside of
-          -- [0,WORD_SIZE).
+          -- [0, SHIFTEE_SIZE). See ghc#20637.
           EShl <$> arbitrary <*> arbitraryShift
         , EShrl <$> arbitrary <*> arbitraryShift
           -- See https://gitlab.haskell.org/ghc/ghc/-/issues/20626
@@ -262,7 +262,7 @@ genExpr' _width = sized gen
         ]
       | otherwise = []
 
-    arbitraryShift = ELit <$> chooseNumber (0, 64-1)
+    arbitraryShift = ELit <$> chooseNumber (0, widthBits (knownWidth @width) - 1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
     divOp f = f <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
