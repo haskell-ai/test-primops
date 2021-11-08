@@ -3,6 +3,7 @@ module CallishOp
     ( prop_callish_ops_correct
       -- * Individual tests
     , popcnt, pdep, pext
+    , refImpl
     , prop_callish_correct
       -- * Evaluating callish machops
     , evalCallishOp
