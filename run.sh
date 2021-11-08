@@ -1,4 +1,4 @@
-#!/usr/bin/env ghc
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
