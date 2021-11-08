@@ -56,6 +56,11 @@ test:
 .ident "GHC 8.10.7"
 ```
 
+To ease experimentation, there is also a simple test
+executable in the `simple` directory; just paste some Cmm
+into `test.cmm`, and run `run.sh`. This will drop you into a
+debugger at the beginning of the Cmm.
+
 ## TODO
 
  * [x] test machops

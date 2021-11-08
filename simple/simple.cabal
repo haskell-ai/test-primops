@@ -1,0 +1,19 @@
+cabal-version:      2.4
+name:               simple
+version:            0.1.0.0
+author:             Ben Gamari
+maintainer:         ben@smart-cactus.org
+license:            BSD-3-Clause
+copyright:          (c) 2021 Ben Gamari
+
+executable simple
+    main-is:          Main.hs
+    cmm-sources:      test.cmm
+    -- silly Cabal doesn't link cmm-sources into executables
+    ghc-options:      test.cmm
+    build-depends:    base,
+                      mmap
+    ghc-options:      -Wall -Wno-unticked-promoted-constructors
+    default-language: Haskell2010
+
+

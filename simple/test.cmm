@@ -1,0 +1,8 @@
+#include "Cmm.h"
+
+test(bits64 buffer) {
+    bits64 ret;
+    ret = %zx64(%shra(242::bits8, 1));
+    return (ret);
+}
+
