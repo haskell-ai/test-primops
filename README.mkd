@@ -39,6 +39,21 @@ Below is a quick example showing some common tasks:
 λ> -- Manually evaluate the expression using GHC
 λ> evalGhcDyn comp e
 42
+λ> -- Compile and dump assembly of an expression
+λ> dumpExprAsm comp e >>= putStrLn
+.section .text
+.align 8
+.globl test
+.type test, @function
+test:
+.Lc3:
+        movl $42,%eax
+        movq %rbx,%rcx
+        movq %rax,%rbx
+        jmp *(%rbp)
+        .size test, .-test
+.section .note.GNU-stack,"",@progbits
+.ident "GHC 8.10.7"
 ```
 
 ## TODO
