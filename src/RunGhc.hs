@@ -7,6 +7,8 @@ module RunGhc
     , evalCmm
     , compile
     , runIt
+    , dumpCmmAsm
+    , dumpExprAsm
     ) where
 
 import Numeric.Natural
@@ -114,3 +116,19 @@ evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
   where
     soName = "Test.so"
     cmmSrc = "test-cmm.cmm"
+
+-- | Compile the given Cmm procedure and dump its disassembly.
+dumpCmmAsm :: Compiler -> Cmm -> IO String
+dumpCmmAsm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
+    writeFile (tmpDir </> cmmSrc) cmm
+    let args = ["-S", "-dynamic", "-package-env", "-"]
+    compile comp tmpDir [cmmSrc] objName args
+    readFile (tmpDir </> "test-cmm.s")
+  where
+    objName = "test-cmm.s"
+    cmmSrc = "test-cmm.cmm"
+
+-- | Compile the given 'Expr' and dump its disassembly.
+dumpExprAsm :: (KnownWidth w)
+            => Compiler -> Expr w -> IO String
+dumpExprAsm comp = dumpCmmAsm comp . toCmmDecl "test"
