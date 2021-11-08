@@ -4,17 +4,18 @@ set -e -o pipefail
 
 BOOT_GHC="${BOOT_GHC:-ghc}"
 TEST_GHC="${TEST_GHC:-ghc}"
+CABAL="${CABAL:-cabal}"
 
 build_runit() {
     ALLOW_NEWER="--allow-newer=base"
-    cabal build $ALLOW_NEWER -w "$TEST_GHC" run-it
-    RUNIT="$(cabal list-bin $ALLOW_NEWER -w "$TEST_GHC" run-it)"
+    "$CABAL" build $ALLOW_NEWER -w "$TEST_GHC" run-it
+    RUNIT="$("$CABAL" list-bin $ALLOW_NEWER -w "$TEST_GHC" run-it)"
     echo "runit is $RUNIT"
 }
 
 run() {
     build_runit
-    cabal run -w "$BOOT_GHC" test-primops -- \
+    "$CABAL" run -w "$BOOT_GHC" test-primops -- \
         --ghc-path="$TEST_GHC" \
         --run-it-path="$RUNIT" \
         $@
@@ -30,7 +31,7 @@ putStrLn "Hello world"
 putStrLn $ "Compiler under test is " ++ ghcPath
 
 EOF
-    cabal repl -w "$BOOT_GHC" test-primops
+    "$CABAL" repl -w "$BOOT_GHC" test-primops
 }
 
 mode="$1"
