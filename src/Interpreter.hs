@@ -10,6 +10,7 @@ module Interpreter
 
 import Test.QuickCheck
 
+import ToCmm
 import Width
 import Number
 import Expr
@@ -37,7 +38,7 @@ agree
     -> Interpreter width
     -> Expr width
     -> Property
-agree interp1 interp2 e = ioProperty $ do
+agree interp1 interp2 e = counterexample (exprToCmm e) $ ioProperty $ do
     r1 <- interp1 e
     r2 <- interp2 e
     return $ r1 === r2
