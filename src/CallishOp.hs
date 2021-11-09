@@ -96,9 +96,9 @@ prop_callish_correct
     -> CallishOp args WordSize
     -> args
     -> Property
-prop_callish_correct comp op e = ioProperty $ do
-    r <- evalCallishOp comp op e
-    return $ refImpl op e === r
+prop_callish_correct comp op args = counterexample (evalCallishOpCmm op args) $ ioProperty $ do
+    r <- evalCallishOp comp op args
+    return $ refImpl op args === r
 
 data CallishOp args result
     = CallishOp { name :: String
