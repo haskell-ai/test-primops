@@ -25,6 +25,7 @@ module Number
     , someNumberToUnsigned
     ) where
 
+import GHC.Stack
 import Data.Bits
 import Data.Proxy
 import Numeric (showHex)
@@ -94,7 +95,7 @@ fromUnsigned
 fromUnsigned n = Number $ truncate (knownWidth @width) n
 
 fromSigned
-    :: forall width. (KnownWidth width)
+    :: forall width. (HasCallStack, KnownWidth width)
     => Integer -> Number width
 fromSigned n
   | n < negate b
