@@ -88,6 +88,9 @@ instance IsOption GhcPath where
     optionName = Tagged "ghc-path"
     optionHelp = Tagged "Path to compiler to test"
 
+runCompilerTests :: Compiler -> IO ()
+runCompilerTests = defaultMain . compilerTests "compiler"
+
 main :: IO ()
 main = do
     createBufferFile
