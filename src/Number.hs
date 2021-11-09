@@ -253,9 +253,9 @@ divU, divS, remU, remS
     :: forall width. (KnownWidth width)
     => Number width -> Number width -> Number width
 divU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
-divS a b = fromSigned $ toSigned a `quot` toSigned b
-remU a b = fromUnsignedC $ toUnsigned a `rem` toUnsigned b
-remS a b = fromSigned $ toSigned a `rem` toSigned b
+divS a b = fromSigned    $ toSigned   a `quot` toSigned b
+remU a b = fromUnsignedC $ toUnsigned a `rem`  toUnsigned b
+remS a b = fromSigned    $ toSigned   a `rem`  toSigned b
 
 divNumber
     :: forall width. (KnownWidth width)
