@@ -98,7 +98,7 @@ fromSigned
     :: forall width. (HasCallStack, KnownWidth width)
     => Integer -> Number width
 fromSigned n
-  | n < negate b
+  | n < negate b - 1
               = error "fromSigned: underflow"
   | n > b     = error "fromSigned: overflow"
   | n < 0     = Number $ fromIntegral $ (1 `shiftL` w) + n
