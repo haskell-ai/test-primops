@@ -249,22 +249,20 @@ shiftRl n s
   | s < 0     = error "negative shift"
   | otherwise = shiftR n s
 
-quotU, quotS, remU, remS
-    :: forall width. (KnownWidth width)
-    => Number width -> Number width -> Number width
-quotU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
-quotS a b = fromSigned    $ toSigned   a `quot` toSigned b
-remU a b  = fromUnsignedC $ toUnsigned a `rem`  toUnsigned b
-remS a b  = fromSigned    $ toSigned   a `rem`  toSigned b
-
 quotNumber
     :: forall width. (KnownWidth width)
     => Signedness -> Number width -> Number width -> Number width
-quotNumber Signed   = quotS
-quotNumber Unsigned = quotU
+quotNumber Unsigned   a b =
+    fromUnsignedC $ toUnsigned a `quot` toUnsigned b
+quotNumber Signed a b
+  | n == m
+  = fromUnsigned $ fromIntegral m
+  | otherwise = fromSigned n
+  where
+    n = toSigned a `quot` toSigned b
+    m = 2^(widthBits (knownWidth @width) - 1)
 
 remNumber
     :: forall width. (KnownWidth width)
     => Signedness -> Number width -> Number width -> Number width
-remNumber Signed   = remS
-remNumber Unsigned = remU
+remNumber s a b = a - b * quotNumber s a b
