@@ -18,7 +18,7 @@ module Number
     , signExtNumber
     , zeroExtNumber
     , shiftRa, shiftRl
-    , divNumber, remNumber
+    , quotNumber, remNumber
       -- * Bit patterns of any width
     , SomeNumber(..)
     , someNumberWidth
@@ -249,19 +249,19 @@ shiftRl n s
   | s < 0     = error "negative shift"
   | otherwise = shiftR n s
 
-divU, divS, remU, remS
+quotU, quotS, remU, remS
     :: forall width. (KnownWidth width)
     => Number width -> Number width -> Number width
-divU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
-divS a b = fromSigned    $ toSigned   a `quot` toSigned b
-remU a b = fromUnsignedC $ toUnsigned a `rem`  toUnsigned b
-remS a b = fromSigned    $ toSigned   a `rem`  toSigned b
+quotU a b = fromUnsignedC $ toUnsigned a `quot` toUnsigned b
+quotS a b = fromSigned    $ toSigned   a `quot` toSigned b
+remU a b  = fromUnsignedC $ toUnsigned a `rem`  toUnsigned b
+remS a b  = fromSigned    $ toSigned   a `rem`  toSigned b
 
-divNumber
+quotNumber
     :: forall width. (KnownWidth width)
     => Signedness -> Number width -> Number width -> Number width
-divNumber Signed   = divS
-divNumber Unsigned = divU
+quotNumber Signed   = quotS
+quotNumber Unsigned = quotU
 
 remNumber
     :: forall width. (KnownWidth width)
