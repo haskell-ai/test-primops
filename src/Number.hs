@@ -107,23 +107,22 @@ fromSigned n
     w = widthBits (knownWidth @width)
     b = 2^(w-1) - 1
 
--- | Sample a 'Number'.
-chooseNumber
-    :: (KnownWidth width)
-    => (Number width, Number width) -> Gen (Number width)
-chooseNumber (Number a, Number b) =
-    fromUnsigned . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
-
-
 -- | Checked.
 fromUnsignedC
-    :: forall width. (KnownWidth width)
+    :: forall width. (HasCallStack, KnownWidth width)
     => Natural -> Number width
 fromUnsignedC n
   | n == n'   = Number n'
   | otherwise = error "fromUnsignedC: out of range"
   where
     n' = truncate (knownWidth @width) n
+
+-- | Sample a 'Number'.
+chooseNumber
+    :: (KnownWidth width)
+    => (Number width, Number width) -> Gen (Number width)
+chooseNumber (Number a, Number b) =
+    fromUnsigned . fromIntegral <$> chooseInteger (fromIntegral a, fromIntegral b)
 
 n8 :: Natural -> Number W8
 n8 = fromUnsigned
