@@ -262,7 +262,9 @@ genExpr' _width = sized gen
         ]
       | otherwise = []
 
-    arbitraryShift = ELit <$> chooseNumber (0, fromIntegral $ widthBits (knownWidth @width) - 1)
+    arbitraryShift :: Gen (Expr WordSize)
+    arbitraryShift =
+        ELit <$> chooseNumber (0, fromIntegral $ widthBits (knownWidth @width) - 1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
     divOp f = f <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
