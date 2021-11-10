@@ -9,6 +9,7 @@ import System.FilePath
 import System.IO.Temp
 import Test.QuickCheck
 
+import Expr
 import Width
 import ToCmm
 import RunGhc
@@ -108,6 +109,6 @@ cCallCmm c = unlines
   where
     argList =
         commaList
-        [ show e
+        [ exprToCmm $ ELit e
         | SomeNumber e <- callArgs c
         ]
