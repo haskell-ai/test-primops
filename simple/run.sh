@@ -6,8 +6,16 @@ TEST_GHC="${TEST_GHC:-ghc}"
 CABAL="${CABAL:-cabal}"
 
 rm -Rf dist-newstyle
-"$CABAL" build -w "$TEST_GHC" --ghc-options="$@"
-exe="$("$CABAL" list-bin -w "$TEST_GHC" --ghc-options="$@" simple)"
+args=(
+    "-w$TEST_GHC"
+    "--ghc-options=$@"
+    "--disable-optimization"
+    "-v3"
+)
+
+"$CABAL" build "${args[@]}" simple
+exe="$("$CABAL" list-bin "${args[@]}" simple)"
+
 gdb "$exe" \
     -ex "break test" \
     -ex "run" \
