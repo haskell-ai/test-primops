@@ -1,0 +1,65 @@
+variables:
+  DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
+  BINDIST_REF: "master"
+
+.build:
+  script:
+    - |
+      if [ -z "$GHC" ]; then
+        echo "Fetching bootstrap GHC via ghcup..."
+        export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
+        export GHCUP_DIR="$CI_PROJECT_DIR/ghcup"
+        export GHCUP_USE_XDG_DIRS=1
+        export XDG_DATA_HOME="$GHCUP_DIR/share"
+        export XDG_BIN_HOME="$GHCUP_DIR/bin"
+        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+        export GHC="$GHCUP_DIR/bin/ghc"
+        export CABAL="$GHCUP_DIR/bin/cabal"
+      fi
+    - |
+       mkdir -p tmp
+       cd tmp
+       echo "Fetching binary distribution from $BINDIST_URL..."
+       curl -L "$BINDIST_URL" | tar -xJ
+       cd ghc-*
+       ./configure --prefix="$CI_PROJECT_DIR/test-ghc"
+       make install
+       cd "$CI_PROJECT_DIR"
+    - rm -Rf tmp
+    - |
+       export TEST_GHC="$CI_PROJECT_DIR/test-ghc/bin/ghc"
+       export BOOT_GHC="$GHC"
+       find .
+
+       echo "Boot GHC:"
+       "$BOOT_GHC" --version
+       echo ""
+
+       echo "Test GHC:"
+       "$TEST_GHC" --version
+       echo ""
+
+       ./run.sh run
+
+x86_64-linux:
+  extends: .build
+  variables:
+    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-deb9-linux.tar.xz?job=validate-x86_64-linux-deb9-hadrian"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb9:$DOCKER_REV"
+  tags:
+    - x86_64-linux
+
+x86_64-darwin:
+  extends: .build
+  variables:
+    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-apple-darwin.tar.xz?job=validate-x86_64-darwin"
+  tags:
+    - x86_64-darwin
+
+aarch64-darwin:
+  extends: .build
+  variables:
+    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-arm64-apple-darwin.tar.xz?job=validate-aarch64-darwin"
+  tags:
+    - aarch64-darwin
+  
