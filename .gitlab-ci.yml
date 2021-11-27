@@ -39,12 +39,19 @@ variables:
        "$TEST_GHC" --version
        echo ""
 
-       ./run.sh run
+       ARGS=()
+       if [ -n "$NO_LLVM" ]; then
+         echo "Skipping LLVM backend tests..."
+         ARGS+=("-p" "$2 != /llvm/")
+       fi
+
+       ./run.sh run "$ARGS[@]"
 
 x86_64-linux:
   extends: .build
   variables:
     BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-deb9-linux.tar.xz?job=validate-x86_64-linux-deb9-hadrian"
+    NO_LLVM: 1
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb9:$DOCKER_REV"
   tags:
     - x86_64-linux
