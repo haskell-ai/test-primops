@@ -1,8 +1,13 @@
+{-# LANGUAGE CPP #-}
+
+#include "MachDeps.h"
+
 -- | Bit widths
 module Width
     ( -- * Width
       Width(..)
     , WordSize
+    , wordSize
     , widthBits
     , KnownWidth
     , knownWidth
@@ -22,7 +27,16 @@ import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
 
+#if WORD_SIZE_IN_BITS == 32
+type WordSize = W32
+#elif WORD_SIZE_IN_BITS == 64
 type WordSize = W64
+#else
+#error unknown word size
+#endif
+
+wordSize :: Width
+wordSize = knownWidth @WordSize
 
 data Width = W8 | W16 | W32 | W64
     deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -86,14 +100,14 @@ allWidths =
     [ SomeWidth (Proxy @W8)
     , SomeWidth (Proxy @W16)
     , SomeWidth (Proxy @W32)
+#if WORD_SIZE_IN_BITS == 64
     , SomeWidth (Proxy @W64)
+#endif
     ]
 
 forAllWidths :: (forall w. (KnownWidth w) => Proxy w -> r) -> [r]
 forAllWidths f =
-    [ f @W8  Proxy
-    , f @W16 Proxy
-    , f @W32 Proxy
-    , f @W64 Proxy
+    [ f proxy
+    | SomeWidth proxy <- allWidths
     ]
 

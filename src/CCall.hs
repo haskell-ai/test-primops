@@ -100,13 +100,14 @@ cType W64 = "uint64_t"
 
 cCallCmm :: CCallDesc -> String
 cCallCmm c = unlines
-    [ "test(bits64 buffer) {"
+    [ "test("++cmmWordType ++" buffer) {"
     , "  "++cmmType (retWidth c)++" ret;"
     , "  (ret) = foreign \"C\" test_c(" ++ argList ++ ");"
-    , "  return (%zx64(ret));"
+    , "  return ("++widenOp++"(ret));"
     , "}"
     ]
   where
+    widenOp = "%zx" ++ show (widthBits wordSize)
     argList =
         commaList
         [ exprToCmm $ ELit e

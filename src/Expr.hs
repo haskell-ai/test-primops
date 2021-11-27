@@ -286,11 +286,7 @@ withArbitraryWidth
     :: (forall width. KnownWidth width => Gen (Expr width))
     -> Gen SomeExpr
 withArbitraryWidth f =
-    oneof [ SomeExpr <$> f @W8
-          , SomeExpr <$> f @W16
-          , SomeExpr <$> f @W32
-          , SomeExpr <$> f @W64
-          ]
+    oneof $ forAllWidths $ \(_ :: Proxy w) -> SomeExpr <$> f @w
 
 -- * Interpreter
 
