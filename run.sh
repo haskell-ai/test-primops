@@ -18,7 +18,7 @@ run() {
     "$CABAL" run -w "$BOOT_GHC" test-primops -- \
         --ghc-path="$TEST_GHC" \
         --run-it-path="$RUNIT" \
-        $@
+        "$@"
 }
 
 repl() {
@@ -36,7 +36,7 @@ EOF
 
 mode="$1"
 case $mode in
-  "") run ;;
-  run) shift; run ;;
+  run) shift; run "$@" ;;
   repl) shift; repl ;;
+  *) run "$@" ;;
 esac
