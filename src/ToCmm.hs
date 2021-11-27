@@ -2,6 +2,7 @@
 module ToCmm
     ( createBufferFile
     , cmmType
+    , cmmWordType
     , toCmmDecl
     , exprToCmm
       -- * Utilities
@@ -22,14 +23,14 @@ cmmType W16 = "bits16"
 cmmType W32 = "bits32"
 cmmType W64 = "bits64"
 
-wordType :: String
-wordType = cmmType $ knownWidth @WordSize
+cmmWordType :: String
+cmmWordType = cmmType $ knownWidth @WordSize
 
 toCmmDecl :: KnownWidth width => String -> Expr width -> String
 toCmmDecl name e = unlines
-    [ name <> " ( " <> wordType <> " buffer )"
+    [ name <> " ( " <> cmmWordType <> " buffer )"
     , "{"
-    , "  " <> wordType <> " ret;"
+    , "  " <> cmmWordType <> " ret;"
     , "  ret = " <> exprToCmm e <> ";"
     , "  return (ret);"
     , "}"

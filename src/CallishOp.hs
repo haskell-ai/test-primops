@@ -129,8 +129,8 @@ evalCallishOpCmm
     -> args
     -> String
 evalCallishOpCmm op args = unlines
-    [ "test ( bits64 buffer ) {"
-    , "  bits64 ret;"
+    [ "test ( " <> cmmWordType <> " buffer ) {"
+    , "  " <> cmmWordType <> " ret;"
     , "  (ret) = prim " ++ name op ++ argList ++ ";"
     , "  return (ret);"
     , "}"
