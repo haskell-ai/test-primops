@@ -41,7 +41,7 @@ compilerConfigs ghcPath =
 
 -- * Properties
 
-expr_prop :: Compiler -> Expr W64 -> Property
+expr_prop :: Compiler -> Expr WordSize -> Property
 expr_prop comp e = conjoin
     [ converges refInterpreter e
     , agree refInterpreter (ghcDynInterpreter' comp) e

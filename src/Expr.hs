@@ -102,7 +102,7 @@ data Expr (width :: Width) where
     EZeroExt :: forall narrow wide. (KnownWidth narrow, wide `WiderThan` narrow)
              => Expr narrow -> Expr wide
 
-    ELoad    :: Expr W64 -> Expr width
+    ELoad    :: Expr WordSize -> Expr width
     ELit     :: Number width -> Expr width
 
 instance KnownWidth width => Num (Expr width) where

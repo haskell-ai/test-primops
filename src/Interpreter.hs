@@ -23,11 +23,11 @@ type Interpreter w =
 refInterpreter :: Interpreter w
 refInterpreter = pure . interpret
 
-ghcStaticInterpreter :: Compiler -> Interpreter W64
+ghcStaticInterpreter :: Compiler -> Interpreter WordSize
 ghcStaticInterpreter comp e =
     fromUnsigned <$> evalGhcStatic comp e
 
-ghcDynInterpreter' :: Compiler -> Interpreter W64
+ghcDynInterpreter' :: Compiler -> Interpreter WordSize
 ghcDynInterpreter' comp e =
     fromUnsigned <$> evalGhcDyn comp e
 
