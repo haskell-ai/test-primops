@@ -42,7 +42,7 @@ variables:
        ARGS=()
        if [ -n "$NO_LLVM" ]; then
          echo "Skipping LLVM backend tests..."
-         ARGS+=("-p" '$2 != /llvm/')
+         ARGS+=("-p" '$2 !~ /llvm/')
        fi
 
        ./run.sh run "${ARGS[@]}"
