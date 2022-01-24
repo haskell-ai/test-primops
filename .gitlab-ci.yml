@@ -45,7 +45,7 @@ variables:
          ARGS+=("-p" "$2 != /llvm/")
        fi
 
-       ./run.sh run "$ARGS[@]"
+       ./run.sh run "${ARGS[@]}"
 
 x86_64-linux:
   extends: .build
