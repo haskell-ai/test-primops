@@ -143,6 +143,7 @@ instance (KnownWidth width) => Enum (Number width) where
       | n > maxBound = error "overflow"
       | otherwise    = n
 
+-- | Unsigned range.
 instance (KnownWidth width) => Bounded (Number width) where
     minBound = Number 0
     maxBound = Number ((1 `shiftL` widthBits (knownWidth @width)) - 1)

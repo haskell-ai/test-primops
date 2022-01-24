@@ -231,8 +231,8 @@ genExpr' _width = sized gen
         [ binOp EAdd
         , binOp ESub
         , binOp EMul
-        , divOp EQuot
-        , divOp ERem
+        , quotOp
+        , remOp
         , ENegate <$> arbitrary
         ]
 
@@ -267,7 +267,20 @@ genExpr' _width = sized gen
         ELit <$> chooseNumber (0, fromIntegral $ widthBits (knownWidth @width) - 1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
-    divOp f = f <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
+    quotOp = do
+        signedness <- arbitrary
+        num <- subexpr2
+        let num' = interpret num
+            -- divisions where the result overflows the expression width
+            -- (e.g. (-128::W8) / (-1::W8)) are undefined.
+            -- See test-primops#1.
+            okay_denom denom
+              | Signed <- signedness =
+                  num' /= maxBound || interpret denom /= maxBound
+              | otherwise = True
+        denom <- suchThat (nonzero subexpr2) okay_denom
+        return $ EQuot signedness num denom
+    remOp = ERem <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
     nonzero = flip suchThat $ \x -> interpret x /= 0
 
 -- * SomeExpr
