@@ -22,7 +22,7 @@ variables:
        echo "Fetching binary distribution from $BINDIST_URL..."
        curl -L "$BINDIST_URL" | tar -xJ
        cd ghc-*
-       ./configure --prefix="$CI_PROJECT_DIR/test-ghc"
+       ./configure --prefix="$CI_PROJECT_DIR/test-ghc" "${CONFIGURE_ARGS[@]}"
        make install
        cd "$CI_PROJECT_DIR"
     - rm -Rf tmp
@@ -60,6 +60,7 @@ x86_64-darwin:
   extends: .build
   variables:
     BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-apple-darwin.tar.xz?job=validate-x86_64-darwin"
+    NO_LLVM: 1
   tags:
     - x86_64-darwin
 
@@ -67,6 +68,7 @@ aarch64-darwin:
   extends: .build
   variables:
     BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-arm64-apple-darwin.tar.xz?job=validate-aarch64-darwin"
+    NO_LLVM: 1
   tags:
     - aarch64-darwin
   
