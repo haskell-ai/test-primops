@@ -19,6 +19,9 @@ module Width
     , WidthOrdering(..)
     , WiderThan
     , compareWidths
+      -- * Bounds
+    , unsignedBounds
+    , signedBounds
     ) where
 
 import Data.Bits as Bits
@@ -111,3 +114,12 @@ forAllWidths f =
     | SomeWidth proxy <- allWidths
     ]
 
+-- | Minimum and maximum bounds (inclusive) of the given width when used to
+-- encode a signed integer via twos-complement.
+unsignedBounds :: Width -> (Integer, Integer)
+unsignedBounds w = (0, 2^(widthBits w) - 1)
+
+-- | Minimum and maximum bounds (inclusive) of the given width when used to
+-- encode a signed integer via twos-complement.
+signedBounds :: Width -> (Integer, Integer)
+signedBounds w = (negate $ 2^(widthBits w - 1), 2^(widthBits w - 1) - 1)
