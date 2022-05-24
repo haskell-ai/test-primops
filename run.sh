@@ -26,7 +26,7 @@ repl() {
     cat >.ghci <<EOF
 let ghcPath = "$TEST_GHC";
 let runItPath = "$RUNIT";
-let comp = (basicCompiler ghcPath) { compRunIt = runItPath };
+let comp = (basicCompiler ghcPath) { RunGhc.compRunIt = runItPath };
 putStrLn "Hello world"
 putStrLn $ "Compiler under test is " ++ ghcPath
 
