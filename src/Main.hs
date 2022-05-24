@@ -21,6 +21,7 @@ import CallishOp
 import CCall
 import RunGhc
 import Expr.Parse
+import MulMayOverflow
 
 basicCompiler :: FilePath -> Compiler
 basicCompiler ghcPath =
@@ -72,6 +73,7 @@ compilerTests name comp = testGroup name
         $ quotRemProp @w (ghcDynInterpreter' comp)
       | SomeWidth (_ :: Proxy w) <- allWidths
       ]
+    , prop_mul_may_oflo_correct comp
     ]
 
 newtype RunItPath = RunItPath FilePath
