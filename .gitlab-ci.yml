@@ -1,6 +1,7 @@
 variables:
   DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
   BINDIST_REF: "master"
+  BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-$BINDIST_JOB.tar.xz?job=$BINDIST_JOB"
 
 .build:
   script:
@@ -50,16 +51,16 @@ variables:
 x86_64-linux:
   extends: .build
   variables:
-    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-deb9-linux.tar.xz?job=validate-x86_64-linux-deb9-hadrian"
+    BINDIST_JOB: "x86_64-linux-deb10-validate+debug_info"
     NO_LLVM: 1
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb9:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
   tags:
     - x86_64-linux
 
 x86_64-darwin:
   extends: .build
   variables:
-    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-x86_64-apple-darwin.tar.xz?job=validate-x86_64-darwin"
+    BINDIST_JOB: "x86_64-darwin-validate"
     NO_LLVM: 1
   tags:
     - x86_64-darwin
@@ -67,7 +68,7 @@ x86_64-darwin:
 aarch64-darwin:
   extends: .build
   variables:
-    BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-arm64-apple-darwin.tar.xz?job=validate-aarch64-darwin"
+    BINDIST_JOB: "aarch64-darwin-validate"
     NO_LLVM: 1
   tags:
     - aarch64-darwin
