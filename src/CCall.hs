@@ -2,6 +2,7 @@
 module CCall
     ( CCallDesc(..)
     , testCCall
+    , evalCCall
     ) where
 
 import System.FilePath
@@ -37,26 +38,32 @@ instance Arbitrary CCallDesc where
     shrink (CCallDesc ret ret_s args) =
         CCallDesc <$> shrink ret <*> pure ret_s <*> shrinkList shrink args
 
+evalCCall
+    :: Compiler
+    -> CCallDesc
+    -> IO [Integer]
+evalCCall comp c = withTempDirectory "." "tmp" $ \tmpDir -> do
+    writeFile (tmpDir </> "test_c.c") (cStub c)
+    writeFile (tmpDir </> "test.cmm") (cCallCmm c)
+    compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
+    out <- runIt comp (tmpDir </> soName)
+    let saw :: [Integer]
+        saw = map read (lines out)
+    return saw
+  where
+    soName = "test.so"
+
 testCCall
     :: Compiler
     -> CCallDesc
     -> Property
-testCCall comp c = 
-    ioProperty $ withTempDirectory "." "tmp" $ \tmpDir -> do
-        writeFile (tmpDir </> "test_c.c") (cStub c)
-        writeFile (tmpDir </> "test.cmm") (cCallCmm c)
-        compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
-        out <- runIt comp (tmpDir </> soName)
-        let saw :: [Integer]
-            saw = map read (lines out)
-            expected :: [Integer]
-            expected = map (\(s, SomeNumber e) -> asInteger s e) (callArgs c) ++ [ret]
-            -- The wrapper zero extends the result so interpret it as unsigned.
-            ret = case callRet c of SomeNumber n -> asInteger Unsigned n
-        return $ saw === expected
-
-  where
-    soName = "test.so"
+testCCall comp c = ioProperty $ do
+    saw <- evalCCall comp c
+    let expected :: [Integer]
+        expected = map (\(s, SomeNumber e) -> asInteger s e) (callArgs c) ++ [ret]
+        -- The wrapper zero extends the result so interpret it as unsigned.
+        ret = case callRet c of SomeNumber n -> asInteger Unsigned n
+    return $ saw === expected
 
 cStub :: CCallDesc -> String
 cStub c
