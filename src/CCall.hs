@@ -34,6 +34,8 @@ instance Arbitrary CCallDesc where
         n <- chooseInt (0, mAX_ARGS)
         args <- vectorOf n arbitrary
         return $ CCallDesc ret ret_signedness args
+    shrink (CCallDesc ret ret_s args) =
+        CCallDesc <$> shrink ret <*> pure ret_s <*> shrinkList shrink args
 
 testCCall
     :: Compiler
