@@ -6,6 +6,7 @@ module Number
       -- * Fixed-width bit patterns
     , Number
     , numberWidth
+    , asInteger
     , toSigned
     , toUnsigned
     , fromSigned
@@ -74,6 +75,13 @@ instance Show SomeNumber where
 instance Arbitrary SomeNumber where
     arbitrary =
         oneof $ forAllWidths $ \(_ :: Proxy w) -> SomeNumber @w <$> arbitrary
+
+-- | Intepret a bit pattern as either a signed or unsigned integer.
+asInteger
+    :: forall width. (KnownWidth width)
+    => Signedness -> Number width -> Integer
+asInteger Signed = toSigned
+asInteger Unsigned = fromIntegral . toUnsigned
 
 -- | Interpret a bit pattern as an unsigned number.
 toUnsigned :: Number width -> Natural
