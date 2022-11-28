@@ -23,6 +23,11 @@ import RunGhc
 import Expr.Parse
 import MulMayOverflow
 
+-- | The 'Interpreter' used for QuickCheck testing.
+mkGhcInterpreter :: Compiler -> Interpreter WordSize
+mkGhcInterpreter = ghcDynInterpreter
+--mkGhcInterpreter = ghcStaticInterpreter
+
 basicCompiler :: FilePath -> Compiler
 basicCompiler ghcPath =
     Compiler { compPath = ghcPath
@@ -45,7 +50,7 @@ compilerConfigs ghcPath =
 expr_prop :: Compiler -> Expr WordSize -> Property
 expr_prop comp e = conjoin
     [ converges refInterpreter e
-    , agree refInterpreter (ghcDynInterpreter' comp) e
+    , agree refInterpreter (mkGhcInterpreter comp) e
     ]
 
 quotRemProp
@@ -70,7 +75,7 @@ compilerTests name comp = testGroup name
     , testProperty "C-Call correctness" (testCCall comp)
     , testGroup "Quot-Rem invariant"
       [ testProperty (show (knownWidth @w))
-        $ quotRemProp @w (ghcDynInterpreter' comp)
+        $ quotRemProp @w (mkGhcInterpreter comp)
       | SomeWidth (_ :: Proxy w) <- allWidths
       ]
     , prop_mul_may_oflo_correct comp
