@@ -6,7 +6,6 @@ module RunGhc
     , evalGhcDyn
     , evalCmm
     , compile
-    , runIt
     , dumpCmmAsm
     , dumpExprAsm
     ) where
@@ -24,8 +23,6 @@ import ToCmm
 -- | The location of GHC and arguments to pass it.
 data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
-                         , compRunIt :: FilePath
-                           -- ^ Path of the `run-it` executable built with this compiler.
                          }
     deriving (Show)
 
@@ -57,7 +54,14 @@ evalGhcStatic
     -> (FilePath -> IO String) -- ^ How to run the test executable, reading stdin
     -> Expr width              -- ^ The expression to evaluate
     -> IO Natural
-evalGhcStatic comp run e = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalGhcStatic comp runExe =
+    evalCmmStatic comp runExe . toCmmDecl "test"
+
+evalCmmStatic :: Compiler
+              -> (FilePath -> IO String)
+              -> Cmm
+              -> IO Natural
+evalCmmStatic comp runExe cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
@@ -73,9 +77,9 @@ evalGhcStatic comp run e = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "  (Ptr p, _, _, _) <- mmapFilePtr \"test\" ReadOnly Nothing"
         , "  print $ " <> toHsWord w "test p"
         ]
-    writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
+    writeFile (tmpDir </> cmmSrc) cmm
     compile comp tmpDir [cmmSrc, hsSrc] exeName []
-    out <- run (tmpDir </> exeName)
+    out <- runExe (tmpDir </> exeName)
     return $ read out
   where
     w = knownWidth @width
@@ -96,25 +100,23 @@ toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
       | w == W64  = ""
       | otherwise =  "extendWord" <> show (widthBits w) <> "#"
 
+-- | Path to the @run-it@ executable.
+newtype RunIt = RunIt FilePath
+
 -- | Evaluate an 'Expr'.
-evalGhcDyn :: Compiler -> Expr WordSize -> IO Natural
-evalGhcDyn comp e = evalCmm comp $ toCmmDecl "test" e
+evalGhcDyn :: Compiler -> RunIt -> Expr WordSize -> IO Natural
+evalGhcDyn comp runIt = evalCmmDyn comp runIt . toCmmDecl "test"
 
 type Cmm = String
 
--- | Invoke @run-it@ on the given shared object.
-runIt :: Compiler -> FilePath -> IO String
-runIt comp soName =
-    readProcess (compRunIt comp) [soName] ""
-
 -- | Evaluate a Cmm function using @run-it@. The function must be named @test@
 -- and must return a @bits64@.
-evalCmm :: Compiler -> Cmm -> IO Natural
-evalCmm comp cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
+evalCmmDyn :: Compiler -> RunIt -> Cmm -> IO Natural
+evalCmmDyn comp (RunIt runItPath) cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> cmmSrc) cmm
     let args = ["-dynamic", "-package-env", "-", "-shared"]
     compile comp tmpDir [cmmSrc] soName args
-    out <- runIt comp (tmpDir </> soName)
+    out <- readProcess runItPath [tmpDir </> soName] ""
     return $ read out
   where
     soName = "Test.so"

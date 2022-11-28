@@ -47,9 +47,9 @@ ghcStaticInterpreter' comp run e =
 
 -- | An 'Interpreter' which compiles the given expression into a test
 -- dynamic object and executes it using the @run-it@ executable.
-ghcDynInterpreter :: Compiler -> Interpreter WordSize
-ghcDynInterpreter comp e =
-    fromUnsigned <$> evalGhcDyn comp e
+ghcDynInterpreter :: Compiler -> RunIt -> Interpreter WordSize
+ghcDynInterpreter comp runIt e =
+    fromUnsigned <$> evalGhcDyn comp runIt e
 
 -- | Do two 'Interpreter's agree in their evaluation of the given expression?
 agree
