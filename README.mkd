@@ -19,6 +19,12 @@ There is a convenient script, `run.sh`, which handles this for you; just set
 the `BOOT_GHC` environment variable to the bootstrap compiler and `TEST_GHC` to
 the compiler-under-test.
 
+## Usage with cross-compilers
+
+`test-primops` can test cross-compilers by running `run.sh` with `TEST_GHC` set
+to the path to the cross-compiler and `EMULATOR` to the path to an emulator
+which can run a target executable (e.g. `qemu-user` or `wasmtime`).
+
 ## REPL usage
 
 It can often be useful to load the `test-primops` executable into GHCi.
