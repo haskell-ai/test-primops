@@ -53,8 +53,11 @@ compile comp workDir srcs out args = do
 -- 'evalGhcDyn'.
 evalGhcStatic
     :: forall width. (KnownWidth width)
-    => Compiler -> Expr width -> IO Natural
-evalGhcStatic comp e = withTempDirectory "." "tmp" $ \tmpDir -> do
+    => Compiler                -- ^ How to compile the test executable
+    -> (FilePath -> IO String) -- ^ How to run the test executable, reading stdin
+    -> Expr width              -- ^ The expression to evaluate
+    -> IO Natural
+evalGhcStatic comp run e = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> hsSrc) $ unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
@@ -72,7 +75,7 @@ evalGhcStatic comp e = withTempDirectory "." "tmp" $ \tmpDir -> do
         ]
     writeFile (tmpDir </> cmmSrc) $ toCmmDecl "test" e
     compile comp tmpDir [cmmSrc, hsSrc] exeName []
-    out <- readProcess (tmpDir </> exeName) [] ""
+    out <- run (tmpDir </> exeName)
     return $ read out
   where
     w = knownWidth @width
