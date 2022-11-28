@@ -20,19 +20,19 @@ import Expr
 --  - May return zero otherwise
 --
 -- We cannot test this like other MachOps since its result is not well-defined.
-prop_mul_may_oflo_correct :: Compiler -> TestTree
-prop_mul_may_oflo_correct comp = testGroup "MulMayOflo"
-    [ testProperty (show (knownWidth @w)) (prop @w comp Proxy)
+prop_mul_may_oflo_correct :: EvalMethod -> TestTree
+prop_mul_may_oflo_correct em = testGroup "MulMayOflo"
+    [ testProperty (show (knownWidth @w)) (prop @w em Proxy)
     | SomeWidth (_ :: Proxy w) <- allWidths
     ]
 
 prop :: forall w. (KnownWidth w)
-     => Compiler
+     => EvalMethod
      -> Proxy w
      -> Expr w -> Expr w
      -> Property
-prop comp Proxy x y = ioProperty $ do
-    r <- evalMulMayOflo comp x y
+prop em Proxy x y = ioProperty $ do
+    r <- evalMulMayOflo em x y
     let does_oflo = r /= 0
     return $ counterexample (show prod) (does_overflow ==> does_oflo)
   where
@@ -42,12 +42,12 @@ prop comp Proxy x y = ioProperty $ do
 
 evalMulMayOflo
     :: forall w. (KnownWidth w)
-    => Compiler
+    => EvalMethod
     -> Expr w
     -> Expr w
     -> IO (Number WordSize)
-evalMulMayOflo comp x y =
-    fromUnsigned <$> evalCmm comp cmm
+evalMulMayOflo em x y =
+    fromUnsigned <$> evalCmm em cmm
   where
     cmm = unlines
         [ "test ( " <> cmmWordType <> " buffer ) {"

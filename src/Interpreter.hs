@@ -1,16 +1,13 @@
 module Interpreter
     ( Interpreter
     , refInterpreter
-    , ghcStaticInterpreter
-    , ghcCrossInterpreter
-    , ghcDynInterpreter
+    , ghcInterpreter
       -- * Properties of interpreters
     , agree
     , converges
     ) where
 
 import Test.QuickCheck
-import System.Process
 
 import ToCmm
 import Width
@@ -25,31 +22,10 @@ type Interpreter w =
 refInterpreter :: Interpreter w
 refInterpreter = pure . interpret
 
--- | An 'Interpreter' which compiles the given expression into a test
--- executable and run it.
-ghcStaticInterpreter :: Compiler -> Interpreter WordSize
-ghcStaticInterpreter comp e =
-    let run exe = readProcess exe [] ""
-     in ghcStaticInterpreter' comp run e
-
--- | An 'Interpreter' which compiles the given expression into a test
--- executable and run it using the provided emulator.
-ghcCrossInterpreter :: Compiler  -- ^ a cross-compiler
-                    -> FilePath  -- ^ emulator for executing compiled executables
-                    -> Interpreter WordSize
-ghcCrossInterpreter comp emulator e =
-    let run exe = readProcess emulator [exe] ""
-     in ghcStaticInterpreter' comp run e
-
-ghcStaticInterpreter' :: Compiler -> (FilePath -> IO String) -> Interpreter WordSize
-ghcStaticInterpreter' comp run e =
-    fromUnsigned <$> evalGhcStatic comp run e
-
--- | An 'Interpreter' which compiles the given expression into a test
--- dynamic object and executes it using the @run-it@ executable.
-ghcDynInterpreter :: Compiler -> RunIt -> Interpreter WordSize
-ghcDynInterpreter comp runIt e =
-    fromUnsigned <$> evalGhcDyn comp runIt e
+-- | An 'Interpreter' which compiles and evaluates the given expression.
+ghcInterpreter :: EvalMethod -> Interpreter WordSize
+ghcInterpreter em e =
+    fromUnsigned <$> evalExpr em e
 
 -- | Do two 'Interpreter's agree in their evaluation of the given expression?
 agree

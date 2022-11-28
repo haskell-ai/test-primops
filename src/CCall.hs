@@ -5,8 +5,6 @@ module CCall
     , evalCCall
     ) where
 
-import System.FilePath
-import System.IO.Temp
 import Test.QuickCheck
 
 import Expr
@@ -14,6 +12,7 @@ import Width
 import ToCmm
 import RunGhc
 import Number
+import Compiler
 
 data CCallDesc
     = CCallDesc { callRet :: SomeNumber
@@ -39,26 +38,23 @@ instance Arbitrary CCallDesc where
         CCallDesc <$> shrink ret <*> pure ret_s <*> shrinkList shrink args
 
 evalCCall
-    :: Compiler
+    :: EvalMethod
     -> CCallDesc
     -> IO [Integer]
-evalCCall comp c = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> "test_c.c") (cStub c)
-    writeFile (tmpDir </> "test.cmm") (cCallCmm c)
-    compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
-    out <- runIt comp (tmpDir </> soName)
+evalCCall em c = do
+    cProg <- compileC (compiler em) (cStub c)
+    cmmProg <- compileCmm (compiler em) (cCallCmm c)
+    out <- runTestProgram em (cProg <> cmmProg)
     let saw :: [Integer]
         saw = map read (lines out)
     return saw
-  where
-    soName = "test.so"
 
 testCCall
-    :: Compiler
+    :: EvalMethod
     -> CCallDesc
     -> Property
-testCCall comp c = ioProperty $ do
-    saw <- evalCCall comp c
+testCCall em c = ioProperty $ do
+    saw <- evalCCall em c
     let expected :: [Integer]
         expected = map (\(s, SomeNumber e) -> asInteger s e) (callArgs c) ++ [ret]
         -- The wrapper zero extends the result so interpret it as unsigned.

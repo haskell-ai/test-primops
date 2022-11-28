@@ -1,68 +1,81 @@
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
-    ( Compiler(..)
-    , addArgs
-    , evalGhcStatic
-    , evalGhcDyn
+    ( EvalMethod(..)
+    , staticEvalMethod
+    , emulatedStaticEvalMethod
+    , runTestProgram
+      -- * Evaluating expressions
+    , evalExpr
+      -- * Evaluating Cmm programs
     , evalCmm
-    , compile
+      -- * Utilities
     , dumpCmmAsm
     , dumpExprAsm
     ) where
 
 import Numeric.Natural
-import System.Exit
 import System.Process
 import System.IO.Temp
 import System.FilePath
 
+import Compiler
 import Expr
 import Width
 import ToCmm
 
--- | The location of GHC and arguments to pass it.
-data Compiler = Compiler { compPath :: FilePath
-                         , compArgs :: [String]
-                         }
-    deriving (Show)
+data EvalMethod
+    = StaticEval { compiler :: Compiler
+                 , runExe :: FilePath -> IO String
+                 }
+    | DynamicEval { compiler :: Compiler
+                  , runItPath :: FilePath
+                  }
 
-addArgs :: Compiler -> [String] -> Compiler
-addArgs c args = c { compArgs = compArgs c ++ args }
-
--- | Compile a set of compilation units.
-compile :: Compiler
-        -> FilePath   -- ^ working directory
-        -> [FilePath] -- ^ sources
-        -> FilePath   -- ^ output path
-        -> [String]   -- ^ other arguments
-        -> IO ()
-compile comp workDir srcs out args = do
-    runProcess' $ inTmp (proc (compPath comp) allArgs)
+staticEvalMethod :: Compiler -> EvalMethod
+staticEvalMethod comp =
+    StaticEval comp runExe
   where
-    allArgs = compArgs comp ++ srcs ++ args ++ ["-o", out]
-    inTmp c = c { cwd = Just workDir }
-    runProcess' p = do
-        (_, _, _, hdl) <- createProcess p
-        ExitSuccess <- waitForProcess hdl
-        return ()
+    runExe exe = readProcess exe [] ""
 
--- | Evaluate an 'Expr' without relying on @run-it@. This is a bit slower than
--- 'evalGhcDyn'.
-evalGhcStatic
-    :: forall width. (KnownWidth width)
-    => Compiler                -- ^ How to compile the test executable
-    -> (FilePath -> IO String) -- ^ How to run the test executable, reading stdin
-    -> Expr width              -- ^ The expression to evaluate
-    -> IO Natural
-evalGhcStatic comp runExe =
-    evalCmmStatic comp runExe . toCmmDecl "test"
+-- | An 'EvalMethod' using an emulator to run target executables.
+emulatedStaticEvalMethod :: Compiler -> FilePath -> EvalMethod
+emulatedStaticEvalMethod comp emulator =
+    StaticEval comp runExe
+  where
+    runExe exe = readProcess emulator [exe] ""
 
-evalCmmStatic :: Compiler
-              -> (FilePath -> IO String)
-              -> Cmm
-              -> IO Natural
-evalCmmStatic comp runExe cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> hsSrc) $ unlines
+runTestProgram :: EvalMethod -> TestProgram -> IO String
+runTestProgram (StaticEval comp runExe) = runTestProgramStatic comp runExe
+runTestProgram (DynamicEval comp runIt) = runTestProgramDyn comp runIt
+
+runTestProgramDyn :: Compiler -> FilePath -> TestProgram -> IO String
+runTestProgramDyn comp runItPath tp =
+    withTempDirectory "." "tmp" $ \tmpDir -> do
+        objs <- writeObjectsIn tmpDir tp
+        compile comp tmpDir objs soName args
+        readProcess runItPath [tmpDir </> soName] ""
+  where
+    args = ["-dynamic", "-package-env", "-", "-shared"]
+    soName = "Test.so"
+
+runTestProgramStatic :: Compiler -> (FilePath -> IO String) -> TestProgram -> IO String
+runTestProgramStatic comp runExe tp =
+    withTempDirectory "." "tmp" $ \tmpDir -> do
+        wrapper <- mkStaticWrapper comp (knownWidth @WordSize)
+        objs <- writeObjectsIn tmpDir (tp <> wrapper)
+        compile comp tmpDir objs exeName []
+        runExe (tmpDir </> exeName)
+  where
+    exeName = "Test"
+
+mkStaticWrapper
+    :: Compiler
+    -> Width
+    -> IO TestProgram
+mkStaticWrapper comp width = do
+    compileHs comp src
+  where
+    src = unlines
         [ "{-# LANGUAGE GHCForeignImportPrim #-}"
         , "{-# LANGUAGE UnliftedFFITypes #-}"
         , "{-# LANGUAGE MagicHash #-}"
@@ -71,21 +84,12 @@ evalCmmStatic comp runExe cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
         , "import GHC.Exts"
         , "import GHC.Ptr (Ptr(Ptr))"
         , "import System.IO.MMap"
-        , "foreign import prim \"test\" test :: Addr# -> " <> hsType w
+        , "foreign import prim \"test\" test :: Addr# -> " <> hsType width
         , "main :: IO ()"
         , "main = do"
         , "  (Ptr p, _, _, _) <- mmapFilePtr \"test\" ReadOnly Nothing"
-        , "  print $ " <> toHsWord w "test p"
+        , "  print $ " <> toHsWord width "test p"
         ]
-    writeFile (tmpDir </> cmmSrc) cmm
-    compile comp tmpDir [cmmSrc, hsSrc] exeName []
-    out <- runExe (tmpDir </> exeName)
-    return $ read out
-  where
-    w = knownWidth @width
-    exeName = "Test"
-    cmmSrc = "test-cmm.cmm"
-    hsSrc = "test-hs.hs"
 
 hsType :: Width -> String
 hsType W8  = "Word8#"
@@ -100,27 +104,17 @@ toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
       | w == W64  = ""
       | otherwise =  "extendWord" <> show (widthBits w) <> "#"
 
--- | Path to the @run-it@ executable.
-newtype RunIt = RunIt FilePath
+evalCmm :: EvalMethod -> Cmm -> IO Natural
+evalCmm em cmm = do
+    tp <- compileCmm (compiler em) cmm
+    out <- runTestProgram em tp
+    return $ read out
 
 -- | Evaluate an 'Expr'.
-evalGhcDyn :: Compiler -> RunIt -> Expr WordSize -> IO Natural
-evalGhcDyn comp runIt = evalCmmDyn comp runIt . toCmmDecl "test"
+evalExpr :: EvalMethod -> Expr WordSize -> IO Natural
+evalExpr em = evalCmm em . toCmmDecl "test"
 
 type Cmm = String
-
--- | Evaluate a Cmm function using @run-it@. The function must be named @test@
--- and must return a @bits64@.
-evalCmmDyn :: Compiler -> RunIt -> Cmm -> IO Natural
-evalCmmDyn comp (RunIt runItPath) cmm = withTempDirectory "." "tmp" $ \tmpDir -> do
-    writeFile (tmpDir </> cmmSrc) cmm
-    let args = ["-dynamic", "-package-env", "-", "-shared"]
-    compile comp tmpDir [cmmSrc] soName args
-    out <- readProcess runItPath [tmpDir </> soName] ""
-    return $ read out
-  where
-    soName = "Test.so"
-    cmmSrc = "test-cmm.cmm"
 
 -- | Compile the given Cmm procedure and dump its disassembly.
 dumpCmmAsm :: Compiler -> Cmm -> IO String
