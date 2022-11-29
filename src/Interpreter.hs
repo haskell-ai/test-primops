@@ -1,8 +1,7 @@
 module Interpreter
     ( Interpreter
     , refInterpreter
-    , ghcStaticInterpreter
-    , ghcDynInterpreter'
+    , ghcInterpreter
       -- * Properties of interpreters
     , agree
     , converges
@@ -23,13 +22,10 @@ type Interpreter w =
 refInterpreter :: Interpreter w
 refInterpreter = pure . interpret
 
-ghcStaticInterpreter :: Compiler -> Interpreter WordSize
-ghcStaticInterpreter comp e =
-    fromUnsigned <$> evalGhcStatic comp e
-
-ghcDynInterpreter' :: Compiler -> Interpreter WordSize
-ghcDynInterpreter' comp e =
-    fromUnsigned <$> evalGhcDyn comp e
+-- | An 'Interpreter' which compiles and evaluates the given expression.
+ghcInterpreter :: EvalMethod -> Interpreter WordSize
+ghcInterpreter em e =
+    fromUnsigned <$> evalExpr em e
 
 -- | Do two 'Interpreter's agree in their evaluation of the given expression?
 agree

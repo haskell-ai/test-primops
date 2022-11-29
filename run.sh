@@ -5,6 +5,7 @@ set -e -o pipefail
 BOOT_GHC="${BOOT_GHC:-ghc}"
 TEST_GHC="${TEST_GHC:-ghc}"
 CABAL="${CABAL:-cabal}"
+EMULATOR="${EMULATOR:-}"
 
 build_runit() {
     ALLOW_NEWER="--allow-newer=base"
@@ -15,10 +16,14 @@ build_runit() {
 
 run() {
     build_runit
-    "$CABAL" run -w "$BOOT_GHC" test-primops -- \
-        --ghc-path="$TEST_GHC" \
-        --run-it-path="$RUNIT" \
-        "$@"
+    args=(
+        "--ghc-path=$TEST_GHC"
+        "--run-it-path=$RUNIT"
+    )
+    if [[ -n "$EMULATOR" ]]; then
+        args+=( "--emulator=$EMULATOR" )
+    fi
+    "$CABAL" run -w "$BOOT_GHC" test-primops -- "${args[@]}" "$@"
 }
 
 repl() {

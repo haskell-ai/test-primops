@@ -24,8 +24,8 @@ import ToCmm
 import Number
 import Expr
 
-prop_callish_ops_correct :: Compiler -> TestTree
-prop_callish_ops_correct comp = testGroup "callish ops"
+prop_callish_ops_correct :: EvalMethod -> TestTree
+prop_callish_ops_correct em = testGroup "callish ops"
     [ testCallishOp "popcnt" (\(_ :: Proxy w) -> toProp $ popcnt @w)
     , testCallishOp "pdep"   (\(_ :: Proxy w) -> toProp $ pdep @w)
     , testCallishOp "pext"   (\(_ :: Proxy w) -> toProp $ pext @w)
@@ -34,7 +34,7 @@ prop_callish_ops_correct comp = testGroup "callish ops"
     toProp :: forall args. (CmmArgs args, Arbitrary args, Show args)
            => CallishOp args WordSize
            -> Property
-    toProp op = property $ prop_callish_correct comp op
+    toProp op = property $ prop_callish_correct em op
 
     testCallishOp
         :: String
@@ -92,12 +92,12 @@ fromBits bits = foldl' (.|.) 0 [ bit i | (i, True) <- zip [0..] bits ]
 
 prop_callish_correct
     :: forall args. (CmmArgs args)
-    => Compiler
+    => EvalMethod
     -> CallishOp args WordSize
     -> args
     -> Property
-prop_callish_correct comp op args = counterexample (evalCallishOpCmm op args) $ ioProperty $ do
-    r <- evalCallishOp comp op args
+prop_callish_correct em op args = counterexample (evalCallishOpCmm op args) $ ioProperty $ do
+    r <- evalCallishOp em op args
     return $ refImpl op args === r
 
 data CallishOp args result
@@ -116,12 +116,12 @@ instance (KnownWidth w) => CmmArgs (Expr w) where
 
 evalCallishOp
     :: forall args. (CmmArgs args)
-    => Compiler
+    => EvalMethod
     -> CallishOp args WordSize
     -> args
     -> IO (Number WordSize)
-evalCallishOp comp op args =
-    fromUnsigned <$> evalCmm comp (evalCallishOpCmm op args)
+evalCallishOp em op args =
+    fromUnsigned <$> evalCmm em (evalCallishOpCmm op args)
 
 evalCallishOpCmm
     :: forall args. (CmmArgs args)

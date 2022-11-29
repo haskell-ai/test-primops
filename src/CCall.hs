@@ -2,11 +2,9 @@
 module CCall
     ( CCallDesc(..)
     , testCCall
+    , evalCCall
     ) where
 
-import Numeric.Natural
-import System.FilePath
-import System.IO.Temp
 import Test.QuickCheck
 
 import Expr
@@ -14,10 +12,12 @@ import Width
 import ToCmm
 import RunGhc
 import Number
+import Compiler
 
 data CCallDesc
     = CCallDesc { callRet :: SomeNumber
-                , callArgs :: [SomeNumber]
+                , callRetSignedness :: Signedness
+                , callArgs :: [(Signedness, SomeNumber)]
                 }
     deriving (Show)
 
@@ -30,29 +30,36 @@ mAX_ARGS = 32
 instance Arbitrary CCallDesc where
     arbitrary = do
         ret <- arbitrary
+        ret_signedness <- arbitrary
         n <- chooseInt (0, mAX_ARGS)
         args <- vectorOf n arbitrary
-        return $ CCallDesc ret args
+        return $ CCallDesc ret ret_signedness args
+    shrink (CCallDesc ret ret_s args) =
+        CCallDesc <$> shrink ret <*> pure ret_s <*> shrinkList shrink args
+
+evalCCall
+    :: EvalMethod
+    -> CCallDesc
+    -> IO [Integer]
+evalCCall em c = do
+    cProg <- compileC (compiler em) (cStub c)
+    cmmProg <- compileCmm (compiler em) (cCallCmm c)
+    out <- runTestProgram em (cProg <> cmmProg)
+    let saw :: [Integer]
+        saw = map read (lines out)
+    return saw
 
 testCCall
-    :: Compiler
+    :: EvalMethod
     -> CCallDesc
     -> Property
-testCCall comp c = 
-    ioProperty $ withTempDirectory "." "tmp" $ \tmpDir -> do
-        writeFile (tmpDir </> "test_c.c") (cStub c)
-        writeFile (tmpDir </> "test.cmm") (cCallCmm c)
-        compile comp tmpDir ["test_c.c", "test.cmm"] soName ["-shared", "-dynamic"]
-        out <- runIt comp (tmpDir </> soName)
-        let saw :: [Natural]
-            saw = map read (lines out)
-            expected :: [Natural]
-            expected = map (\(SomeNumber e) -> toUnsigned e) (callArgs c) ++ [ret]
-            ret = case callRet c of SomeNumber n -> toUnsigned n
-        return $ saw === expected
-
-  where
-    soName = "test.so"
+testCCall em c = ioProperty $ do
+    saw <- evalCCall em c
+    let expected :: [Integer]
+        expected = map (\(s, SomeNumber e) -> asInteger s e) (callArgs c) ++ [ret]
+        -- The wrapper zero extends the result so interpret it as unsigned.
+        ret = case callRet c of SomeNumber n -> asInteger Unsigned n
+    return $ saw === expected
 
 cStub :: CCallDesc -> String
 cStub c
@@ -65,11 +72,14 @@ cStub c
     ]
   where
     argBndrs = [ "arg"++show i | (i,_) <- zip [0::Int ..] (callArgs c) ]
-    argWidths = [ knownWidth @w | SomeNumber (_ :: Number w) <- callArgs c ]
+    argTypes =
+      [ (signedness, knownWidth @w)
+      | (signedness, SomeNumber (_ :: Number w)) <- callArgs c
+      ]
 
     funcDef = unlines $
-      [ cType (retWidth c) <> " test_c(" <> argList <> ") {" ] ++
-      zipWith printArg argWidths argBndrs ++
+      [ cType Unsigned (retWidth c) <> " test_c(" <> argList <> ") {" ] ++
+      zipWith printArg argTypes argBndrs ++
       [ "  fflush(stdout);"
       , "  return " ++ show (someNumberToUnsigned $ callRet c) ++ "ULL;"
       , "}"
@@ -77,39 +87,50 @@ cStub c
 
     argList =
         commaList
-        [ unwords [cType w, bndr]
-        | (w, bndr) <- zip argWidths argBndrs
+        [ unwords [ty, bndr]
+        | (ty, bndr) <- zip (map (uncurry cType) argTypes) argBndrs
         ]
-    printArg w bndr =
-        "  printf(" ++ quoted (formatStr w ++ "\\n") ++ ", " ++ bndr ++ ");"
+    printArg ty bndr =
+        "  printf(" ++ quoted (formatStr ty ++ "\\n") ++ ", " ++ bndr ++ ");"
 
 quoted :: String -> String
 quoted s = "\"" ++ s ++ "\""
 
-formatStr :: Width -> String
-formatStr w =
-    "0x%" ++ quoted ("PRIx"++show n)
+formatStr :: (Signedness, Width) -> String
+formatStr (signedness, w) =
+    "%" ++ quoted ("PRI" ++ fmt ++ show n)
   where
+    fmt = case signedness of
+            Signed   -> "d"
+            Unsigned -> "u"
     n = widthBits w
 
-cType :: Width -> String
-cType W8  = "uint8_t"
-cType W16 = "uint16_t"
-cType W32 = "uint32_t"
-cType W64 = "uint64_t"
+cType :: Signedness -> Width -> String
+cType signedness width  = prefix ++ "int" ++ show n ++ "_t"
+  where
+    n = widthBits width
+    prefix = case signedness of
+      Signed   -> ""
+      Unsigned -> "u"
 
 cCallCmm :: CCallDesc -> String
 cCallCmm c = unlines
     [ "test("++cmmWordType ++" buffer) {"
     , "  "++cmmType (retWidth c)++" ret;"
-    , "  (ret) = foreign \"C\" test_c(" ++ argList ++ ");"
+    , "  (" ++ retHint ++ "ret) = foreign \"C\" test_c(" ++ argList ++ ");"
     , "  return ("++widenOp++"(ret));"
     , "}"
     ]
   where
+    retHint = case callRetSignedness c of
+                Signed   -> "\"signed\" "
+                Unsigned -> ""
     widenOp = "%zx" ++ show (widthBits wordSize)
     argList =
         commaList
-        [ exprToCmm $ ELit e
-        | SomeNumber e <- callArgs c
+        [ exprToCmm (ELit e) ++ hint
+        | (signedness, SomeNumber e) <- callArgs c
+        , let hint = case signedness of
+                       Signed -> " \"signed\""
+                       Unsigned -> ""
         ]
