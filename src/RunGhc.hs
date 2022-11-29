@@ -63,7 +63,7 @@ runTestProgramStatic comp runExe tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
         wrapper <- mkStaticWrapper comp (knownWidth @WordSize)
         objs <- writeObjectsIn tmpDir (tp <> wrapper)
-        compile comp tmpDir objs exeName []
+        compile comp tmpDir objs exeName ["-package", "bytestring"]
         runExe (tmpDir </> exeName)
   where
     exeName = "Test"
@@ -83,12 +83,13 @@ mkStaticWrapper comp width = do
         , "import Data.Word"
         , "import GHC.Exts"
         , "import GHC.Ptr (Ptr(Ptr))"
-        , "import System.IO.MMap"
+        , "import qualified Data.ByteString as BS"
+        , "import qualified Data.ByteString.Unsafe as BS"
         , "foreign import prim \"test\" test :: Addr# -> " <> hsType width
         , "main :: IO ()"
         , "main = do"
-        , "  (Ptr p, _, _, _) <- mmapFilePtr \"test\" ReadOnly Nothing"
-        , "  print $ " <> toHsWord width "test p"
+        , "  buf <- BS.readFile \"test\""
+        , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> print $ " <> toHsWord width "test p"
         ]
 
 hsType :: Width -> String
