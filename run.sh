@@ -7,9 +7,16 @@ TEST_GHC="${TEST_GHC:-ghc}"
 CABAL="${CABAL:-cabal}"
 EMULATOR="${EMULATOR:-}"
 
+if "$TEST_GHC" --info | grep -q '("target word size","8")'; then
+    echo "Found 64-bit target"
+else
+    echo "Found 32-bit target"
+    CABAL_ARGS="-ftarget-32-bit"
+fi
+
 build_runit() {
     ALLOW_NEWER="--allow-newer=base"
-    "$CABAL" build $ALLOW_NEWER -w "$TEST_GHC" run-it
+    "$CABAL" build $ALLOW_NEWER -w "$TEST_GHC" $CABAL_ARGS run-it
     RUNIT="$("$CABAL" list-bin $ALLOW_NEWER -w "$TEST_GHC" run-it)"
     echo "runit is $RUNIT"
 }
@@ -23,7 +30,7 @@ run() {
     if [[ -n "$EMULATOR" ]]; then
         args+=( "--emulator=$EMULATOR" )
     fi
-    "$CABAL" run -w "$BOOT_GHC" test-primops -- "${args[@]}" "$@"
+    "$CABAL" run -w "$BOOT_GHC" $CABAL_ARGS test-primops -- "${args[@]}" "$@"
 }
 
 repl() {

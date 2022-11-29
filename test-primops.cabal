@@ -8,9 +8,19 @@ copyright:          (c) 2021 Ben Gamari
 synopsis:
   A QuickCheck testsuite for GHC's Cmm pipeline.
 
+flag target-32bit
+    description:     Set to True when the compiler-under-test targets a
+                     platform with 32-bit word-size.
+    default:         False
+    manual:          True
+
 executable test-primops
     main-is:          Main.hs
     hs-source-dirs:   src
+    if flag(target-32bit)
+        cpp-options:  -DWORD_SIZE_32BIT
+    else
+        cpp-options:  -DWORD_SIZE_64BIT
     other-modules:    Width,
                       Number,
                       Expr,

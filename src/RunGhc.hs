@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
     ( EvalMethod(..)
@@ -95,8 +97,13 @@ mkStaticWrapper comp width = do
 hsType :: Width -> String
 hsType W8  = "Word8#"
 hsType W16 = "Word16#"
+#if defined(WORD_SIZE_32BIT)
+hsType W32 = "Word32#"
+hsType W64 = "Word64#"
+#else
 hsType W32 = "Word32#"
 hsType W64 = "Word#"
+#endif
 
 toHsWord :: Width -> String -> String
 toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)

@@ -30,9 +30,9 @@ import Data.Proxy
 import Test.QuickCheck hiding ((.&.))
 import Prelude hiding (truncate)
 
-#if WORD_SIZE_IN_BITS == 32
+#if defined(WORD_SIZE_32BIT)
 type WordSize = W32
-#elif WORD_SIZE_IN_BITS == 64
+#elif defined(WORD_SIZE_64BIT)
 type WordSize = W64
 #else
 #error unknown word size
