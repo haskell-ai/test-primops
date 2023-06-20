@@ -82,7 +82,7 @@ mkStaticWrapper comp width = do
         , "{-# LANGUAGE UnliftedFFITypes #-}"
         , "{-# LANGUAGE MagicHash #-}"
         , "module Main where"
-        , "import Data.Word"
+        , "import GHC.Word"
         , "import GHC.Exts"
         , "import GHC.Ptr (Ptr(Ptr))"
         , "import qualified Data.ByteString as BS"
@@ -91,22 +91,17 @@ mkStaticWrapper comp width = do
         , "main :: IO ()"
         , "main = do"
         , "  buf <- BS.readFile \"test\""
-        , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> print $ " <> toHsWord width "test p"
+        , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> print $ " <> toHsWord64 width "test p"
         ]
 
 hsType :: Width -> String
 hsType W8  = "Word8#"
 hsType W16 = "Word16#"
-#if defined(WORD_SIZE_32BIT)
 hsType W32 = "Word32#"
 hsType W64 = "Word64#"
-#else
-hsType W32 = "Word32#"
-hsType W64 = "Word#"
-#endif
 
-toHsWord :: Width -> String -> String
-toHsWord w x = "W# " <> parens (extendFn <> " " <> parens x)
+toHsWord64 :: Width -> String -> String
+toHsWord64 w x = "W64# " <> parens (extendFn <> " " <> parens x)
   where
     extendFn
       | w == W64  = ""
@@ -119,7 +114,7 @@ evalCmm em cmm = do
     return $ read out
 
 -- | Evaluate an 'Expr'.
-evalExpr :: EvalMethod -> Expr WordSize -> IO Natural
+evalExpr :: EvalMethod -> Expr W64 -> IO Natural
 evalExpr em = evalCmm em . toCmmDecl "test"
 
 type Cmm = String

@@ -103,9 +103,7 @@ allWidths =
     [ SomeWidth (Proxy @W8)
     , SomeWidth (Proxy @W16)
     , SomeWidth (Proxy @W32)
-#if WORD_SIZE_IN_BITS == 64
     , SomeWidth (Proxy @W64)
-#endif
     ]
 
 forAllWidths :: (forall w. (KnownWidth w) => Proxy w -> r) -> [r]
