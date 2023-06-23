@@ -1,0 +1,4 @@
+# Tell hie-bios that this is a Cabal project. Otherwise, it tries to find a
+# stack executable.
+cradle:
+  cabal:
