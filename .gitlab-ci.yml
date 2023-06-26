@@ -51,6 +51,10 @@ variables:
          ARGS+=("-p" '$2 !~ /llvm/')
        fi
 
+       if [ -n "$GHC_ARGS" ]; then
+         ARGS+=("--ghc-args" "$GHC_ARGS")
+       fi
+
        ./run.sh run "${ARGS[@]}"
 
 x86_64-linux:
@@ -58,6 +62,7 @@ x86_64-linux:
   variables:
     BINDIST_JOB: "x86_64-linux-deb10-validate+debug_info"
     NO_LLVM: 1
+    GHC_ARGS: -fPIC
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
   tags:
     - x86_64-linux
