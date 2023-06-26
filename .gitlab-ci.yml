@@ -11,8 +11,12 @@ variables:
         export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
         export GHCUP_DIR="$CI_PROJECT_DIR/ghcup"
         export GHCUP_USE_XDG_DIRS=1
+        # To prevent conflicts with other jobs on this Gitlab runner, install
+        # ghcup in local folders.
         export XDG_DATA_HOME="$GHCUP_DIR/share"
         export XDG_BIN_HOME="$GHCUP_DIR/bin"
+        export XDG_CACHE_HOME="$GHCUP_DIR/cache"
+        export XDG_CONFIG_HOME="$GHCUP_DIR/config"
         curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
         export GHC="$GHCUP_DIR/bin/ghc"
         export CABAL="$GHCUP_DIR/bin/cabal"
