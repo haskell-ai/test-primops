@@ -1,5 +1,5 @@
 variables:
-  DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
+  DOCKER_REV: "243a00f06550e6b9a00fa0f1530d1bb761e8b7cc"
   BINDIST_REF: "master"
   BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-$BINDIST_JOB.tar.xz?job=$BINDIST_JOB"
 
