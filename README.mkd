@@ -67,6 +67,14 @@ executable in the `simple` directory; just paste some Cmm
 into `test.cmm`, and run `run.sh`. This will drop you into a
 debugger at the beginning of the Cmm.
 
+`simple` can be run with *QEMU*: Just set the environment variable `EMULATOR` to
+the *QEMU* executable. E.g.
+
+```sh
+cd simple
+EMULATOR=qemu-riscv64 TEST_GHC=<path of GHC under test> ./run.sh
+```
+
 ## TODO
 
  * [x] test machops
