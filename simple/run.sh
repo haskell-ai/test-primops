@@ -19,7 +19,7 @@ exe=$("$CABAL" list-bin "${args[@]}" simple)
 
 echo "Using executable: $exe"
 
-if [ -n $EMULATOR ]; then
+if [ -n "$EMULATOR" ]; then
     $EMULATOR -g 1111 $exe &
     gdb \
         -ex "file $exe" \
