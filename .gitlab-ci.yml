@@ -1,85 +1,68 @@
-variables:
-  DOCKER_REV: "243a00f06550e6b9a00fa0f1530d1bb761e8b7cc"
-  BINDIST_REF: "master"
-  BINDIST_URL: "https://gitlab.haskell.org/ghc/ghc/-/jobs/artifacts/$BINDIST_REF/raw/ghc-$BINDIST_JOB.tar.xz"
 
-.build:
-  script:
-    - |
-      if [ -z "$GHC" ]; then
-        echo "Fetching bootstrap GHC via ghcup..."
-        export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
-        export GHCUP_DIR="$CI_PROJECT_DIR/ghcup"
-        export GHCUP_USE_XDG_DIRS=1
-        # To prevent conflicts with other jobs on this Gitlab runner, install
-        # ghcup in local folders.
-        export XDG_DATA_HOME="$GHCUP_DIR/share"
-        export XDG_BIN_HOME="$GHCUP_DIR/bin"
-        export XDG_CACHE_HOME="$GHCUP_DIR/cache"
-        export XDG_CONFIG_HOME="$GHCUP_DIR/config"
-        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-        export GHC="$GHCUP_DIR/bin/ghc"
-        export CABAL="$GHCUP_DIR/bin/cabal"
-      fi
-    - |
-       mkdir -p tmp
-       cd tmp
-       echo "Fetching binary distribution from $BINDIST_URL..."
-       # Job names may contain characters that need to be url-encoded.
-       curl --get -L "$BINDIST_URL" --data-urlencode "job=$BINDIST_JOB" | tar -xJ
-       cd ghc-*
-       ./configure --prefix="$CI_PROJECT_DIR/test-ghc" "${CONFIGURE_ARGS[@]}"
-       make install
-       cd "$CI_PROJECT_DIR"
-    - rm -Rf tmp
-    - |
-       export TEST_GHC="$CI_PROJECT_DIR/test-ghc/bin/ghc"
-       export BOOT_GHC="$GHC"
-       find .
 
-       echo "Boot GHC:"
-       "$BOOT_GHC" --version
-       echo ""
+include: template.yml
 
-       echo "Test GHC:"
-       "$TEST_GHC" --version
-       echo ""
 
-       ARGS=()
-       if [ -n "$NO_LLVM" ]; then
-         echo "Skipping LLVM backend tests..."
-         ARGS+=("-p" '$2 !~ /llvm/')
-       fi
-
-       if [ -n "$GHC_ARGS" ]; then
-         ARGS+=("--ghc-args" "$GHC_ARGS")
-       fi
-
-       ./run.sh run "${ARGS[@]}"
+# The validate pipelines
 
 x86_64-linux:
-  extends: .build
-  variables:
-    BINDIST_JOB: "x86_64-linux-deb10-validate+debug_info"
-    NO_LLVM: 1
-    GHC_ARGS: -fPIC
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
-  tags:
-    - x86_64-linux
+  extends: .build-x86_64-linux-deb10
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: never
+    - when: always
 
 x86_64-darwin:
-  extends: .build
-  variables:
-    BINDIST_JOB: "x86_64-darwin-validate"
-    NO_LLVM: 1
-  tags:
-    - x86_64-darwin
+  extends: .build-x86_64-darwin
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: never
+    - when: always
 
 aarch64-darwin:
-  extends: .build
-  variables:
-    BINDIST_JOB: "aarch64-darwin-validate"
-    NO_LLVM: 1
+  extends: .build-aarch64-darwin
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: never
+    - when: always
+
+aarch64-linux:
+  extends: .build-aarch64-linux-deb10
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: never
+    - when: always
+
+# Upstream triggered
+
+upstream:
+  image: nixos/nix:2.14.1
   tags:
-    - aarch64-darwin
-  
+    - x86_64-linux
+  before_script:
+    - echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+    - nix-channel --update
+  script:
+    - nix shell --extra-experimental-features nix-command -f .gitlab/ -c gen_ci --pipeline-id="$UPSTREAM_PIPELINE_ID" > "generated-config.yml"
+
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: always
+    - when: never
+  artifacts:
+    paths:
+      - generated-config.yml
+
+test-upstream:
+  needs: ["upstream"]
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: always
+    - when: never
+  trigger:
+    strategy: depend
+    include:
+      - artifact: generated-config.yml
+        job: upstream
+
+
