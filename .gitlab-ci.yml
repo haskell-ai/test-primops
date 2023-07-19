@@ -33,6 +33,18 @@ aarch64-linux:
       when: never
     - when: always
 
+update-branch:
+  image: "nixos/nix:2.14.1"
+  tags:
+    - x86_64-linux
+  script:
+    - git remote -v
+    - git reset --hard origin/master
+    - git push "https://gitlab-ci-token:$PROJECT_PUSH_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git" +HEAD:upstream-testing -o ci.skip
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+
+
 # Upstream triggered
 
 upstream:
