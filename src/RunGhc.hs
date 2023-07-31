@@ -87,26 +87,16 @@ mkStaticWrapper comp width = do
         , "import GHC.Ptr (Ptr(Ptr))"
         , "import qualified Data.ByteString as BS"
         , "import qualified Data.ByteString.Unsafe as BS"
-        , "foreign import prim \"test\" test :: Addr# -> " <> hsType width
+        , "foreign import prim \"test\" test :: Addr# -> " <> hsWordType width
         , "main :: IO ()"
         , "main = do"
         , "  buf <- BS.readFile \"test\""
-        , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> print $ " <> toHsWord64 width "test p"
+        , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> do"
+        , "    let res = " <> hsWordCon width <> " (test p)"
+        , "    print res"
         ]
 
-hsType :: Width -> String
-hsType W8  = "Word8#"
-hsType W16 = "Word16#"
-hsType W32 = "Word32#"
-hsType W64 = "Word64#"
-
-toHsWord64 :: Width -> String -> String
-toHsWord64 w x = "W64# " <> parens (extendFn <> " " <> parens x)
-  where
-    extendFn
-      | w == W64  = ""
-      | otherwise =  "extendWord" <> show (widthBits w) <> "#"
-
+-- | Expects the 'Cmm' to be a function named @test@ which returns a @bits64@.
 evalCmm :: EvalMethod -> Cmm -> IO Natural
 evalCmm em cmm = do
     tp <- compileCmm (compiler em) cmm
@@ -114,7 +104,7 @@ evalCmm em cmm = do
     return $ read out
 
 -- | Evaluate an 'Expr'.
-evalExpr :: EvalMethod -> Expr W64 -> IO Natural
+evalExpr :: EvalMethod -> Expr WordSize -> IO Natural
 evalExpr em = evalCmm em . toCmmDecl "test"
 
 type Cmm = String

@@ -22,6 +22,9 @@ module Width
       -- * Bounds
     , unsignedBounds
     , signedBounds
+      -- * Haskell representation
+    , hsWordType
+    , hsWordCon
     ) where
 
 import Data.Bits as Bits
@@ -121,3 +124,17 @@ unsignedBounds w = (0, 2^(widthBits w) - 1)
 -- encode a signed integer via twos-complement.
 signedBounds :: Width -> (Integer, Integer)
 signedBounds w = (negate $ 2^(widthBits w - 1), 2^(widthBits w - 1) - 1)
+
+-- | The name of the Haskell boxed word type of the given width.
+hsWordType :: Width -> String
+hsWordType W8  = "Word8#"
+hsWordType W16 = "Word16#"
+hsWordType W32 = "Word32#"
+hsWordType W64 = "Word64#"
+
+-- | The name of the data constructor of @hsWordType width@.
+hsWordCon :: Width -> String
+hsWordCon W8  = "W8#"
+hsWordCon W16 = "W16#"
+hsWordCon W32 = "W32#"
+hsWordCon W64 = "W64#"
