@@ -34,7 +34,10 @@ prop :: forall w. (KnownWidth w)
 prop em Proxy x y = ioProperty $ do
     r <- evalMulMayOflo em x y
     let does_oflo = r /= 0
-    return $ counterexample (show prod) (does_overflow ==> does_oflo)
+    return
+       $ classify (does_oflo && not does_overflow) "false-overflow"
+       $ counterexample (show (does_overflow, prod))
+       $ (does_overflow ==> does_oflo)
   where
     (min_bound, max_bound) = signedBounds (knownWidth @w)
     prod = toSigned (interpret x) * toSigned (interpret y)
