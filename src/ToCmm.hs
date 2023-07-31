@@ -26,11 +26,12 @@ cmmType W64 = "bits64"
 cmmWordType :: String
 cmmWordType = cmmType $ knownWidth @WordSize
 
-toCmmDecl :: KnownWidth width => String -> Expr width -> String
+toCmmDecl :: forall width. KnownWidth width
+          => String -> Expr width -> String
 toCmmDecl name e = unlines
     [ name <> " ( " <> cmmWordType <> " buffer )"
     , "{"
-    , "  " <> cmmWordType <> " ret;"
+    , "  " <> cmmType (knownWidth @width) <> " ret;"
     , "  ret = " <> exprToCmm e <> ";"
     , "  return (ret);"
     , "}"
