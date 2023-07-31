@@ -31,8 +31,8 @@ prop_callish_ops_correct em = testGroup "callish ops"
     , testCallishOp "pext"   (\(_ :: Proxy w) -> toProp $ pext @w)
     ]
   where
-    toProp :: forall args. (CmmArgs args, Arbitrary args, Show args)
-           => CallishOp args WordSize
+    toProp :: forall args w. (CmmArgs args, Arbitrary args, Show args, KnownWidth w)
+           => CallishOp args w
            -> Property
     toProp op = property $ prop_callish_correct em op
 
@@ -52,13 +52,13 @@ popcnt = CallishOp
     }
 
 -- | Arguments are @(source, mask)@.
-pdep :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) WordSize
+pdep :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) w
 pdep = CallishOp
     { name = "%pdep" ++ show (widthBits (knownWidth @w))
     , refImpl = uncurry ref
     }
   where
-    ref :: Expr w -> Expr w -> Number WordSize
+    ref :: Expr w -> Expr w -> Number w
     ref x0 mask0 = fromUnsigned $ fromBits $ go (exprBits mask0) (exprBits x0)
       where
         exprBits = toBits . interpret
@@ -69,13 +69,13 @@ pdep = CallishOp
         go _            []       = error "pdep: ran out of bits"
 
 -- | Arguments are @(source, mask)@.
-pext :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) WordSize
+pext :: forall w. (KnownWidth w) => CallishOp (Expr w, Expr w) w
 pext = CallishOp
     { name = "%pext" ++ show (widthBits (knownWidth @w))
     , refImpl = uncurry ref
     }
   where
-    ref :: Expr w -> Expr w -> Number WordSize
+    ref :: Expr w -> Expr w -> Number w
     ref x mask =
         fromUnsigned
         $ fromBits
@@ -91,9 +91,9 @@ fromBits :: [Bool] -> Natural
 fromBits bits = foldl' (.|.) 0 [ bit i | (i, True) <- zip [0..] bits ]
 
 prop_callish_correct
-    :: forall args. (CmmArgs args)
+    :: forall args width. (CmmArgs args, KnownWidth width)
     => EvalMethod
-    -> CallishOp args WordSize
+    -> CallishOp args width
     -> args
     -> Property
 prop_callish_correct em op args = counterexample (evalCallishOpCmm op args) $ ioProperty $ do
@@ -115,25 +115,26 @@ instance (KnownWidth w) => CmmArgs (Expr w) where
     getArgs a = [SomeExpr a]
 
 evalCallishOp
-    :: forall args. (CmmArgs args)
+    :: forall args width. (CmmArgs args, KnownWidth width)
     => EvalMethod
-    -> CallishOp args WordSize
+    -> CallishOp args width
     -> args
-    -> IO (Number WordSize)
+    -> IO (Number width)
 evalCallishOp em op args =
-    fromUnsigned <$> evalCmm em wordSize (evalCallishOpCmm op args)
+    fromUnsigned <$> evalCmm em (knownWidth @width) (evalCallishOpCmm op args)
 
 evalCallishOpCmm
-    :: forall args. (CmmArgs args)
-    => CallishOp args WordSize
+    :: forall args width. (CmmArgs args, KnownWidth width)
+    => CallishOp args width
     -> args
     -> String
 evalCallishOpCmm op args = unlines
     [ "test ( " <> cmmWordType <> " buffer ) {"
-    , "  " <> cmmWordType <> " ret;"
+    , "  " <> cmmType width <> " ret;"
     , "  (ret) = prim " ++ name op ++ argList ++ ";"
     , "  return (ret);"
     , "}"
     ]
   where
     argList = parens $ commaList [exprToCmm e | SomeExpr e <- getArgs args]
+    width = knownWidth @width
