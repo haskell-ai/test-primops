@@ -24,7 +24,11 @@ usage = fail $ unlines
 
 main :: IO ()
 main = do
-  [width, so] <- getArgs
+  args <- getArgs
+  (width, so) <- case args of
+                   [width, so] -> pure (width, so)
+                   _ -> usage
+
   (Ptr p, _, _, _) <- mmapFilePtr "test" ReadOnly Nothing
   dl <- dlopen so [RTLD_NOW]
   Ptr entry <- castFunPtrToPtr <$> dlsym dl "test"
