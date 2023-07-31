@@ -102,8 +102,8 @@ prop_callish_correct em op args = counterexample (evalCallishOpCmm op args) $ io
 
 data CallishOp args result
     = CallishOp { name :: String
-              , refImpl :: args -> Number result
-              }
+                , refImpl :: args -> Number result
+                }
 
 class CmmArgs arg where
     getArgs :: arg -> [SomeExpr]
@@ -121,7 +121,7 @@ evalCallishOp
     -> args
     -> IO (Number WordSize)
 evalCallishOp em op args =
-    fromUnsigned <$> evalCmm em (evalCallishOpCmm op args)
+    fromUnsigned <$> evalCmm em wordSize (evalCallishOpCmm op args)
 
 evalCallishOpCmm
     :: forall args. (CmmArgs args)

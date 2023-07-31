@@ -46,24 +46,28 @@ emulatedStaticEvalMethod comp emulator =
   where
     runExe exe = readProcess emulator [exe] ""
 
-runTestProgram :: EvalMethod -> TestProgram -> IO String
+runTestProgram :: EvalMethod -> Width -> TestProgram -> IO String
 runTestProgram (StaticEval comp runExe) = runTestProgramStatic comp runExe
 runTestProgram (DynamicEval comp runIt) = runTestProgramDyn comp runIt
 
-runTestProgramDyn :: Compiler -> FilePath -> TestProgram -> IO String
-runTestProgramDyn comp runItPath tp =
+runTestProgramDyn :: Compiler -> FilePath
+                  -> Width -> TestProgram
+                  -> IO String
+runTestProgramDyn comp runItPath width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
         objs <- writeObjectsIn tmpDir tp
         compile comp tmpDir objs soName args
-        readProcess runItPath [tmpDir </> soName] ""
+        readProcess runItPath [show (widthBits width), tmpDir </> soName] ""
   where
     args = ["-dynamic", "-package-env", "-", "-shared"]
     soName = "Test.so"
 
-runTestProgramStatic :: Compiler -> (FilePath -> IO String) -> TestProgram -> IO String
-runTestProgramStatic comp runExe tp =
+runTestProgramStatic :: Compiler -> (FilePath -> IO String)
+                     -> Width -> TestProgram
+                     -> IO String
+runTestProgramStatic comp runExe width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
-        wrapper <- mkStaticWrapper comp (knownWidth @WordSize)
+        wrapper <- mkStaticWrapper comp width
         objs <- writeObjectsIn tmpDir (tp <> wrapper)
         compile comp tmpDir objs exeName ["-package", "bytestring"]
         runExe (tmpDir </> exeName)
@@ -96,16 +100,18 @@ mkStaticWrapper comp width = do
         , "    print res"
         ]
 
--- | Expects the 'Cmm' to be a function named @test@ which returns a @bits64@.
-evalCmm :: EvalMethod -> Cmm -> IO Natural
-evalCmm em cmm = do
+-- | Expects the 'Cmm' to be a function named @test@ which returns a
+-- @width@-size integer.
+evalCmm :: EvalMethod -> Width -> Cmm -> IO Natural
+evalCmm em width cmm = do
     tp <- compileCmm (compiler em) cmm
-    out <- runTestProgram em tp
+    out <- runTestProgram em width tp
     return $ read out
 
 -- | Evaluate an 'Expr'.
-evalExpr :: EvalMethod -> Expr WordSize -> IO Natural
-evalExpr em = evalCmm em . toCmmDecl "test"
+evalExpr :: forall width. KnownWidth width
+         => EvalMethod -> Expr width -> IO Natural
+evalExpr em = evalCmm em (knownWidth @width) . toCmmDecl "test"
 
 type Cmm = String
 

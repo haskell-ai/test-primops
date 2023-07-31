@@ -50,7 +50,7 @@ evalMulMayOflo
     -> Expr w
     -> IO (Number WordSize)
 evalMulMayOflo em x y =
-    fromUnsigned <$> evalCmm em cmm
+    fromUnsigned <$> evalCmm em wordSize cmm
   where
     cmm = unlines
         [ "test ( " <> cmmWordType <> " buffer ) {"

@@ -44,7 +44,7 @@ evalCCall
 evalCCall em c = do
     cProg <- compileC (compiler em) (cStub c)
     cmmProg <- compileCmm (compiler em) (cCallCmm c)
-    out <- runTestProgram em (cProg <> cmmProg)
+    out <- runTestProgram em wordSize (cProg <> cmmProg)
     let saw :: [Integer]
         saw = map read (lines out)
     return saw
