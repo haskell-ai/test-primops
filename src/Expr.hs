@@ -231,10 +231,17 @@ genExpr' _width = sized gen
         [ binOp EAdd
         , binOp ESub
         , binOp EMul
-        , quotOp
-        , remOp
         , ENegate <$> arbitrary
-        ]
+        ] ++ quottishGens
+
+    -- The i386 backend only supports the 64-bit quot and rem operations as
+    -- callish ops. So, we do not generate those in that case.
+    -- We should come back to this if we decide to add the JS or WASM backends.
+    quottishGens :: [Gen (Expr width)]
+    quottishGens =
+      case Proxy @width `compareWidths` Proxy @WordSize of
+        Wider -> []
+        _ -> [quotOp, remOp]
 
     bitwiseGens :: [Gen (Expr width)]
     bitwiseGens =
