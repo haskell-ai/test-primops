@@ -11,7 +11,7 @@ if "$TEST_GHC" --info | grep -q '("target word size","8")'; then
     echo "Found 64-bit target"
 else
     echo "Found 32-bit target"
-    CABAL_ARGS="-ftarget-32-bit"
+    CABAL_ARGS="-ftarget-32bit"
 fi
 
 build_runit() {
