@@ -13,13 +13,11 @@ x86_64-linux:
     - when: always
 
 i386-linux:
-  extends: .build
-  variables:
-    BINDIST_JOB: "i386-linux-deb10-validate"
-    NO_LLVM: 1
-  image: "registry.gitlab.haskell.org/ghc/ci-images/i386-linux-deb10:$DOCKER_REV"
-  tags:
-    - x86_64-linux
+  extends: .build-i386-linux-deb10
+  rules:
+    - if: '$UPSTREAM_PIPELINE_ID'
+      when: never
+    - when: always
 
 x86_64-darwin:
   extends: .build-x86_64-darwin
