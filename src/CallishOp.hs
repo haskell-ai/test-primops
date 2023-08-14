@@ -121,7 +121,7 @@ evalCallishOp
     -> args
     -> IO (Number width)
 evalCallishOp em op args =
-    fromUnsigned <$> evalCmm em (knownWidth @width) (evalCallishOpCmm op args)
+    fromUnsigned <$> throwFailure (evalCmm em (knownWidth @width) (evalCallishOpCmm op args))
 
 evalCallishOpCmm
     :: forall args width. (CmmArgs args, KnownWidth width)

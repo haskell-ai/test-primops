@@ -40,14 +40,17 @@ instance Arbitrary CCallDesc where
 evalCCall
     :: EvalMethod
     -> CCallDesc
-    -> IO [Integer]
+    -> IO (Either ProcessFailure [Integer])
 evalCCall em c = do
     cProg <- compileC (compiler em) (cStub c)
     cmmProg <- compileCmm (compiler em) (cCallCmm c)
-    out <- runTestProgram em wordSize (cProg <> cmmProg)
-    let saw :: [Integer]
-        saw = map read (lines out)
-    return saw
+    res <- runTestProgram em wordSize (cProg <> cmmProg)
+    return $ case res of
+               ProcessSucceeded out _ ->
+                   let saw :: [Integer]
+                       saw = map read (lines out)
+                   in Right saw
+               ProcessFailed failure -> Left failure
 
 testCCall
     :: EvalMethod
@@ -59,7 +62,7 @@ testCCall em c = ioProperty $ do
         expected = map (\(s, SomeNumber e) -> asInteger s e) (callArgs c) ++ [ret]
         -- The wrapper zero extends the result so interpret it as unsigned.
         ret = case callRet c of SomeNumber n -> asInteger Unsigned n
-    return $ saw === expected
+    return $ saw === Right expected
 
 cStub :: CCallDesc -> String
 cStub c

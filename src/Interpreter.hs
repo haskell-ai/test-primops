@@ -7,6 +7,7 @@ module Interpreter
     , converges
     ) where
 
+import Control.Exception
 import Test.QuickCheck
 
 import ToCmm
@@ -23,9 +24,10 @@ refInterpreter :: Interpreter w
 refInterpreter = pure . interpret
 
 -- | An 'Interpreter' which compiles and evaluates the given expression.
+-- May throw 'ProcessFailure' when test program diverges.
 ghcInterpreter :: EvalMethod -> Interpreter WordSize
 ghcInterpreter em e =
-    fromUnsigned <$> evalExpr em e
+    fromUnsigned <$> throwFailure (evalExpr em e)
 
 -- | Do two 'Interpreter's agree in their evaluation of the given expression?
 agree

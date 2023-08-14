@@ -2,7 +2,10 @@
 
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
-    ( EvalMethod(..)
+    ( ProcessResult(..)
+    , ProcessFailure(..)
+    , throwFailure
+    , EvalMethod(..)
     , staticEvalMethod
     , emulatedStaticEvalMethod
     , runTestProgram
@@ -15,9 +18,11 @@ module RunGhc
     , dumpExprAsm
     ) where
 
+import Control.Exception
 import Numeric.Natural
 import System.Process
 import System.IO.Temp
+import System.Exit
 import System.FilePath
 
 import Compiler
@@ -25,46 +30,71 @@ import Expr
 import Width
 import ToCmm
 
+data ProcessResult
+    = ProcessSucceeded { prStdout :: String
+                       , prStderr :: String
+                       }
+    | ProcessFailed ProcessFailure
+
+data ProcessFailure = ProcessFailure { preExitCode :: Int }
+    deriving (Show, Eq)
+
+instance Exception ProcessFailure
+
+throwFailure :: IO (Either ProcessFailure a) -> IO a
+throwFailure = (>>= either throwIO return)
+
 data EvalMethod
     = StaticEval { compiler :: Compiler
-                 , runExe :: FilePath -> IO String
+                 , runExe :: FilePath -> IO ProcessResult
                  }
     | DynamicEval { compiler :: Compiler
                   , runItPath :: FilePath
                   }
 
+readProcess' :: FilePath -- ^ executable
+             -> [String] -- ^ arguments
+             -> String   -- ^ stdin
+             -> IO ProcessResult
+readProcess' exe args stdin = do
+    (code, out, err) <- readProcessWithExitCode exe args stdin
+    case code of
+      ExitSuccess   -> return $ ProcessSucceeded out err
+      ExitFailure n -> return $ ProcessFailed $ ProcessFailure n
+
 staticEvalMethod :: Compiler -> EvalMethod
 staticEvalMethod comp =
     StaticEval comp runExe
   where
-    runExe exe = readProcess exe [] ""
+    runExe exe = readProcess' exe [] ""
 
 -- | An 'EvalMethod' using an emulator to run target executables.
 emulatedStaticEvalMethod :: Compiler -> FilePath -> EvalMethod
 emulatedStaticEvalMethod comp emulator =
     StaticEval comp runExe
   where
-    runExe exe = readProcess emulator [exe] ""
+    runExe exe = readProcess' emulator [exe] ""
 
-runTestProgram :: EvalMethod -> Width -> TestProgram -> IO String
+runTestProgram :: EvalMethod -> Width -> TestProgram -> IO ProcessResult
 runTestProgram (StaticEval comp runExe) = runTestProgramStatic comp runExe
 runTestProgram (DynamicEval comp runIt) = runTestProgramDyn comp runIt
 
 runTestProgramDyn :: Compiler -> FilePath
                   -> Width -> TestProgram
-                  -> IO String
+                  -> IO ProcessResult
 runTestProgramDyn comp runItPath width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
         objs <- writeObjectsIn tmpDir tp
         compile comp tmpDir objs soName args
-        readProcess runItPath [show (widthBits width), tmpDir </> soName] ""
+        readProcess' runItPath [show (widthBits width), tmpDir </> soName] ""
   where
     args = ["-dynamic", "-package-env", "-", "-shared"]
     soName = "Test.so"
 
-runTestProgramStatic :: Compiler -> (FilePath -> IO String)
+runTestProgramStatic :: Compiler
+                     -> (FilePath -> IO ProcessResult)
                      -> Width -> TestProgram
-                     -> IO String
+                     -> IO ProcessResult
 runTestProgramStatic comp runExe width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
         wrapper <- mkStaticWrapper comp width
@@ -102,15 +132,17 @@ mkStaticWrapper comp width = do
 
 -- | Expects the 'Cmm' to be a function named @test@ which returns a
 -- @width@-size integer.
-evalCmm :: EvalMethod -> Width -> Cmm -> IO Natural
+evalCmm :: EvalMethod -> Width -> Cmm -> IO (Either ProcessFailure Natural)
 evalCmm em width cmm = do
     tp <- compileCmm (compiler em) cmm
     out <- runTestProgram em width tp
-    return $ read out
+    case out of
+      ProcessSucceeded out _err -> return $ Right $ read out
+      ProcessFailed failure -> return $ Left failure
 
 -- | Evaluate an 'Expr'.
 evalExpr :: forall width. KnownWidth width
-         => EvalMethod -> Expr width -> IO Natural
+         => EvalMethod -> Expr width -> IO (Either ProcessFailure Natural)
 evalExpr em = evalCmm em (knownWidth @width) . toCmmDecl "test"
 
 type Cmm = String

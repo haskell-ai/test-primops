@@ -33,7 +33,7 @@ prop :: forall w. (KnownWidth w)
      -> Property
 prop em Proxy x y = ioProperty $ do
     r <- evalMulMayOflo em x y
-    let does_oflo = r /= 0
+    let does_oflo = r /= Right 0
     return
        $ classify (does_oflo && not does_overflow) "false-overflow"
        $ counterexample (show (does_overflow, prod))
@@ -48,9 +48,9 @@ evalMulMayOflo
     => EvalMethod
     -> Expr w
     -> Expr w
-    -> IO (Number WordSize)
+    -> IO (Either ProcessFailure (Number WordSize))
 evalMulMayOflo em x y =
-    fromUnsigned <$> evalCmm em wordSize cmm
+    fmap fromUnsigned <$> evalCmm em wordSize cmm
   where
     cmm = unlines
         [ "test ( " <> cmmWordType <> " buffer ) {"
