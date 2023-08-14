@@ -25,7 +25,7 @@ refInterpreter = pure . interpret
 
 -- | An 'Interpreter' which compiles and evaluates the given expression.
 -- May throw 'ProcessFailure' when test program diverges.
-ghcInterpreter :: EvalMethod -> Interpreter WordSize
+ghcInterpreter :: EvalMethod -> Interpreter w
 ghcInterpreter em e =
     fromUnsigned <$> throwFailure (evalExpr em e)
 
