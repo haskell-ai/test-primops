@@ -35,18 +35,25 @@ run() {
 
 repl() {
     build_runit
-    cat >.ghci <<EOF
+
+    cat >test-primops.ghci <<EOF
+:m + RunGhc ToCmm Expr.Parse Expr Width
 let ghcPath = "$TEST_GHC";
 let runItPath = "$RUNIT";
-let comp = basicCompiler ghcPath;
-let staticEval = staticEvalMethod comp;
-let dynEval = DynamicEval comp runItPath;
-let interpreter = ghcInterpreter dynEval;
+let comp = Compiler.basicCompiler ghcPath;
+let staticEval = RunGhc.staticEvalMethod comp;
+let dynEval = RunGhc.DynamicEval comp runItPath;
+let interpreter = Interpreter.ghcInterpreter dynEval;
 putStrLn "Hello world"
 putStrLn $ "Compiler under test is " ++ ghcPath
-
 EOF
-    "$CABAL" repl -w "$BOOT_GHC" test-primops
+
+    printf "For best results, run\n\n"
+    printf "  :script test-primops.ghci\n\n"
+
+    "$CABAL" repl \
+        -w "$BOOT_GHC" \
+        lib:test-primops
 }
 
 mode="$1"
