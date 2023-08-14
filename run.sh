@@ -38,9 +38,10 @@ repl() {
     cat >.ghci <<EOF
 let ghcPath = "$TEST_GHC";
 let runItPath = "$RUNIT";
-let comp = (basicCompiler ghcPath);
+let comp = basicCompiler ghcPath;
 let staticEval = staticEvalMethod comp;
 let dynEval = DynamicEval comp runItPath;
+let interpreter = ghcInterpreter dynEval;
 putStrLn "Hello world"
 putStrLn $ "Compiler under test is " ++ ghcPath
 
