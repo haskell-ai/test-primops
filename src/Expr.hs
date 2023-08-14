@@ -142,46 +142,7 @@ instance KnownWidth width => Show (Expr width) where
 
 instance KnownWidth width => Arbitrary (Expr width) where
     arbitrary = genExpr
-    shrink e =
-        case e of
-          ERel  op a b -> shrinkBinOp (ERel op) a b
-
-          EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ] ++ [ ENegate b | interpret a == 0 ]
-          EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
-          EQuot  s a b -> shrinkDivOp (EQuot s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          ERem   s a b -> shrinkDivOp (ERem s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
-          EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
-          EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          EXOr     a b -> shrinkBinOp EXOr  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
-          ENot     a   -> shrinkUnOp  ENot  a   ++ [a]
-          EShl     a b -> shrinkBinOp EShl  a b ++ [ a | interpret b == 0 ]
-          EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
-          EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
-          ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
-          ENarrow  a   -> shrinkUnOp  ENarrow a
-                          ++ [ ENarrow b | ENarrow b <- pure a, Wider <- pure $ b `compareWidths` e ]
-                          ++ [ b | EZeroExt b <- pure a, SameWidth <- pure $ e `compareWidths` b ]
-          ESignExt a   -> shrinkUnOp  ESignExt a
-                          ++ [ ESignExt b | ESignExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
-                          ++ [ EZeroExt a ]
-          EZeroExt a   -> shrinkUnOp  EZeroExt a
-                          ++ [ EZeroExt b | EZeroExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
-          ELoad    a   -> shrinkUnOp  ELoad a
-          ELit     a   -> map ELit (shrink a)
-      where
-        shrinkUnOp op a =
-            [ ELit $ interpret (op a) ] ++
-            [ op a' | a' <- shrink a ]
-        shrinkBinOp op a b =
-            [ ELit $ interpret (op a b) ] ++
-            [ op a' b' | (a', b') <- shrink (a, b) ]
-        shrinkDivOp op a b =
-            [ ELit $ interpret (op a b) ] ++
-            [ op a' b'
-            | (a', b') <- shrink (a, b)
-            , interpret b' /= 0
-            ]
+    shrink e = shrinkExpr e
 
 genExpr :: forall width. (KnownWidth width) 
         => Gen (Expr width)
@@ -289,6 +250,49 @@ genExpr' _width = sized gen
         return $ EQuot signedness num denom
     remOp = ERem <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
     nonzero = flip suchThat $ \x -> interpret x /= 0
+
+shrinkExpr :: forall width. (KnownWidth width)
+           => Expr width -> [Expr width]
+shrinkExpr e =
+    case e of
+      ERel  op a b -> shrinkBinOp (ERel op) a b
+
+      EAdd     a b -> shrinkBinOp EAdd  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
+      ESub     a b -> shrinkBinOp ESub  a b ++ [ a | interpret b == 0 ] ++ [ ENegate b | interpret a == 0 ]
+      EMul     a b -> shrinkBinOp EMul  a b ++ [ a | interpret b == 1 ] ++ [ b | interpret a == 1 ]
+      EQuot  s a b -> shrinkDivOp (EQuot s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+      ERem   s a b -> shrinkDivOp (ERem s) a b ++ [ a | interpret b == 1 ] ++ [ 0 | interpret a == 0 ]
+      EAnd     a b -> shrinkBinOp EAnd  a b ++ [ a | interpret b == ones ] ++ [ b | interpret a == ones ]
+      EOr      a b -> shrinkBinOp EOr   a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
+      EXOr     a b -> shrinkBinOp EXOr  a b ++ [ a | interpret b == 0 ] ++ [ b | interpret a == 0 ]
+      ENot     a   -> shrinkUnOp  ENot  a   ++ [a]
+      EShl     a b -> shrinkBinOp EShl  a b ++ [ a | interpret b == 0 ]
+      EShrl    a b -> shrinkBinOp EShrl a b ++ [ a | interpret b == 0 ]
+      EShra    a b -> shrinkBinOp EShra a b ++ [ a | interpret b == 0 ]
+      ENegate  a   -> shrinkUnOp  ENegate a ++ [a]
+      ENarrow  a   -> shrinkUnOp  ENarrow a
+                      ++ [ ENarrow b | ENarrow b <- pure a, Wider <- pure $ b `compareWidths` e ]
+                      ++ [ b | EZeroExt b <- pure a, SameWidth <- pure $ e `compareWidths` b ]
+      ESignExt a   -> shrinkUnOp  ESignExt a
+                      ++ [ ESignExt b | ESignExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
+                      ++ [ EZeroExt a ]
+      EZeroExt a   -> shrinkUnOp  EZeroExt a
+                      ++ [ EZeroExt b | EZeroExt b <- pure a, Wider <- pure $ e `compareWidths` b ]
+      ELoad    a   -> shrinkUnOp  ELoad a
+      ELit     a   -> map ELit (shrink a)
+  where
+    shrinkUnOp op a =
+        [ ELit $ interpret (op a) ] ++
+        [ op a' | a' <- shrink a ]
+    shrinkBinOp op a b =
+        [ ELit $ interpret (op a b) ] ++
+        [ op a' b' | (a', b') <- shrink (a, b) ]
+    shrinkDivOp op a b =
+        [ ELit $ interpret (op a b) ] ++
+        [ op a' b'
+        | (a', b') <- shrink (a, b)
+        , interpret b' /= 0
+        ]
 
 -- * SomeExpr
 
