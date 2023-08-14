@@ -1,3 +1,8 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
+
 -- | Cmm pipeline correctness testsuite.
 module Main
     ( module Main
@@ -65,12 +70,6 @@ instance IsOption Emulator where
     optionHelp = return "Path to emulator to use to run target executables"
     optionCLParser =
         Emulator . Just <$> option str (long "emulator" <> help "Path to emulator executable")
-
-basicCompiler :: FilePath -> Compiler
-basicCompiler ghcPath =
-    Compiler { compPath = ghcPath
-             , compArgs = ["-dcmm-lint", "-dasm-lint", "-O0"]
-             }
 
 -- * Properties
 

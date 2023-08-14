@@ -2,6 +2,7 @@
 
 module Compiler
     ( Compiler(..)
+    , basicCompiler
     , addArgs
     , compile
       -- * Compiling objects
@@ -24,6 +25,13 @@ data Compiler = Compiler { compPath :: FilePath
                          , compArgs :: [String]
                          }
     deriving (Show)
+
+-- | A GHC compiler with some typical flags.
+basicCompiler :: FilePath -> Compiler
+basicCompiler ghcPath =
+    Compiler { compPath = ghcPath
+             , compArgs = ["-dcmm-lint", "-dasm-lint", "-O0"]
+             }
 
 addArgs :: Compiler -> [String] -> Compiler
 addArgs c args = c { compArgs = compArgs c ++ args }

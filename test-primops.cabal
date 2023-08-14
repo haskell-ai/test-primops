@@ -14,14 +14,17 @@ flag target-32bit
     default:         False
     manual:          True
 
-executable test-primops
-    main-is:          Main.hs
+common warnings
+    ghc-options:      -Wall -Wno-unticked-promoted-constructors
+
+library
+    import:           warnings
     hs-source-dirs:   src
     if flag(target-32bit)
         cpp-options:  -DWORD_SIZE_32BIT
     else
         cpp-options:  -DWORD_SIZE_64BIT
-    other-modules:    Width,
+    exposed-modules:  Width,
                       Number,
                       Expr,
                       Expr.Parse,
@@ -48,7 +51,7 @@ executable test-primops
                       temporary,
                       transformers
     build-tool-depends: run-it:run-it
-    ghc-options:      -Wall -Wno-unticked-promoted-constructors -threaded
+    ghc-options:      -threaded
     default-extensions:
         AllowAmbiguousTypes
         DataKinds
@@ -61,5 +64,21 @@ executable test-primops
         TypeInType
         TypeOperators
         ViewPatterns
+    default-language: Haskell2010
+
+executable test-primops
+    import:           warnings
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:    base,
+                      QuickCheck,
+                      directory,
+                      filepath,
+                      optparse-applicative,
+                      tasty,
+                      tasty-quickcheck,
+                      test-primops
+    build-tool-depends: run-it:run-it
+    ghc-options:      -threaded
     default-language: Haskell2010
 
