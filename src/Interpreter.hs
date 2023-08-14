@@ -7,7 +7,6 @@ module Interpreter
     , converges
     ) where
 
-import Control.Exception
 import Test.QuickCheck
 
 import ToCmm

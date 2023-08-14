@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
     ( ProcessResult(..)
@@ -64,21 +66,21 @@ readProcess' exe args stdin = do
       ExitFailure n -> return $ ProcessFailed $ ProcessFailure n
 
 staticEvalMethod :: Compiler -> EvalMethod
-staticEvalMethod comp =
-    StaticEval comp runExe
+staticEvalMethod compiler =
+    StaticEval {compiler, runExe}
   where
     runExe exe = readProcess' exe [] ""
 
 -- | An 'EvalMethod' using an emulator to run target executables.
 emulatedStaticEvalMethod :: Compiler -> FilePath -> EvalMethod
-emulatedStaticEvalMethod comp emulator =
-    StaticEval comp runExe
+emulatedStaticEvalMethod compiler emulator =
+    StaticEval {compiler, runExe}
   where
     runExe exe = readProcess' emulator [exe] ""
 
 runTestProgram :: EvalMethod -> Width -> TestProgram -> IO ProcessResult
-runTestProgram (StaticEval comp runExe) = runTestProgramStatic comp runExe
-runTestProgram (DynamicEval comp runIt) = runTestProgramDyn comp runIt
+runTestProgram (StaticEval {compiler, runExe})     = runTestProgramStatic compiler runExe
+runTestProgram (DynamicEval {compiler, runItPath}) = runTestProgramDyn compiler runItPath
 
 runTestProgramDyn :: Compiler -> FilePath
                   -> Width -> TestProgram
@@ -143,8 +145,8 @@ mkStaticWrapper comp width = do
 evalCmm :: EvalMethod -> Width -> Cmm -> IO (Either ProcessFailure Natural)
 evalCmm em width cmm = do
     tp <- compileCmm (compiler em) cmm
-    out <- runTestProgram em width tp
-    case out of
+    res <- runTestProgram em width tp
+    case res of
       ProcessSucceeded out _err -> return $ Right $ read out
       ProcessFailed failure -> return $ Left failure
 

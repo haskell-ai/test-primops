@@ -26,7 +26,6 @@ import Interpreter
 import MulMayOverflow
 import Number
 import RunGhc
-import ToCmm
 import Width
 
 newtype UsedEvalMethod = UsedEvalMethod EvalMethod

@@ -185,11 +185,14 @@ instance (KnownWidth width) => Bits (Number width) where
       where w = widthBits (knownWidth @width)
     rotate = undefined -- TODO
     bitSize _ = widthBits (knownWidth @width)
-    bitSizeMaybe = Just . bitSize
+    bitSizeMaybe = Just . finiteBitSize
     isSigned _ = False
     testBit (Number n) i = n `testBit` i
     bit i = fromUnsigned $ bit i
     popCount (Number n) = popCount n
+
+instance (KnownWidth width) => FiniteBits (Number width) where
+    finiteBitSize _ = widthBits (knownWidth @width)
 
 ones :: forall width. (KnownWidth width) => Number width
 ones = (1 `shiftL` widthBits (knownWidth @width)) - 1

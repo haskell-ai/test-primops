@@ -9,7 +9,6 @@ module ToCmm
     , parens
     ) where
 
-import qualified Data.ByteString as BS
 import Data.List (intercalate)
 
 import Width
