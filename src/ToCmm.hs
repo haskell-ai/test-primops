@@ -1,7 +1,6 @@
 -- | Tools for rendering 'Expr's to Cmm.
 module ToCmm
-    ( createBufferFile
-    , cmmType
+    ( cmmType
     , cmmWordType
     , toCmmDecl
     , exprToCmm
@@ -94,8 +93,4 @@ braces s = concat ["[", s, "]"]
 
 commaList :: [String] -> String
 commaList = intercalate ", "
-
-createBufferFile :: IO ()
-createBufferFile = do
-    BS.writeFile "test" buffer
 

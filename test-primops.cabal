@@ -35,6 +35,7 @@ library
                       CCall,
                       MulMayOverflow,
                       RunGhc
+    other-modules:    Buffer
     build-depends:    base,
                       QuickCheck,
                       bytestring,

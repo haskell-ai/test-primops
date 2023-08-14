@@ -32,6 +32,7 @@ import Data.Proxy
 import Prelude hiding (truncate)
 
 import Width
+import Buffer
 import Number
 
 data RelationalOp
@@ -362,15 +363,6 @@ interpret (ESignExt a) = signExtNumber (interpret a)
 interpret (EZeroExt a) = zeroExtNumber (interpret a)
 interpret (ELoad off)  = load $ toUnsigned $ interpret off
 interpret (ELit n)     = n
-
-bufferSize :: Natural
-bufferSize = 1 `shiftL` 22
-
-buffer :: BS.ByteString
-buffer = BS.pack $ take (fromIntegral bufferSize) [ fromIntegral i | i <- [(0 :: Int) ..] ]
-
-validOffset :: Natural -> Bool
-validOffset off = off < bufferSize
 
 data Endianness = LittleEndian | BigEndian
 

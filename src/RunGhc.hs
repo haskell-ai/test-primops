@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- | Utilities for running GHC and evaluating Cmm via @run-it@.
 module RunGhc
     ( ProcessResult(..)
@@ -16,6 +14,7 @@ module RunGhc
       -- * Utilities
     , dumpCmmAsm
     , dumpExprAsm
+    , createBufferFile
     ) where
 
 import Control.Exception
@@ -24,7 +23,9 @@ import System.Process
 import System.IO.Temp
 import System.Exit
 import System.FilePath
+import qualified Data.ByteString as BS
 
+import Buffer
 import Compiler
 import Expr
 import Width
@@ -86,7 +87,7 @@ runTestProgramDyn comp runItPath width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
         objs <- writeObjectsIn tmpDir tp
         compile comp tmpDir objs soName args
-        readProcess' runItPath [show (widthBits width), tmpDir </> soName] ""
+        readProcess' runItPath [bufferFile, show (widthBits width), tmpDir </> soName] ""
   where
     args = ["-dynamic", "-package-env", "-", "-shared"]
     soName = "Test.so"
@@ -103,6 +104,13 @@ runTestProgramStatic comp runExe width tp =
         runExe (tmpDir </> exeName)
   where
     exeName = "Test"
+
+bufferFile :: FilePath
+bufferFile = "test"
+
+createBufferFile :: IO ()
+createBufferFile = do
+    BS.writeFile bufferFile buffer
 
 mkStaticWrapper
     :: Compiler
@@ -124,7 +132,7 @@ mkStaticWrapper comp width = do
         , "foreign import prim \"test\" test :: Addr# -> " <> hsWordType width
         , "main :: IO ()"
         , "main = do"
-        , "  buf <- BS.readFile \"test\""
+        , "  buf <- BS.readFile \"" ++ bufferFile ++ "\""
         , "  BS.unsafeUseAsCString buf $ \\(Ptr p) -> do"
         , "    let res = " <> hsWordCon width <> " (test p)"
         , "    print res"

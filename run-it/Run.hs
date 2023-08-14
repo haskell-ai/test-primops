@@ -18,18 +18,21 @@ foreign import prim "stg_trampoline" trampoline64 :: Addr# -> Addr# -> Word64#
 
 usage :: IO a
 usage = fail $ unlines
-    [ "usage: run-it <width> <file.so>"
-    , "where <width> is one of 8, 16, 32, 64"
+    [ "usage: run-it <buffer> <width> <file.so>"
+    , "where"
+    , "  <buffer> is a file to serve as the test buffer"
+    , "  <width> is one of 8, 16, 32, 64"
+    , "  <file.so> is a shared object containing a `test` symbol"
     ]
 
 main :: IO ()
 main = do
   args <- getArgs
-  (width, so) <- case args of
-                   [width, so] -> pure (width, so)
+  (buffer, width, so) <- case args of
+                   [buffer, width, so] -> pure (buffer, width, so)
                    _ -> usage
 
-  (Ptr p, _, _, _) <- mmapFilePtr "test" ReadOnly Nothing
+  (Ptr p, _, _, _) <- mmapFilePtr buffer ReadOnly Nothing
   dl <- dlopen so [RTLD_NOW]
   Ptr entry <- castFunPtrToPtr <$> dlsym dl "test"
   case width of
