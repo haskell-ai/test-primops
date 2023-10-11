@@ -1,4 +1,5 @@
-
+variables:
+  GIT_STRATEGY: clone
 
 include: template.yml
 
