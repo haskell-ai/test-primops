@@ -44,7 +44,7 @@ evalCCall
 evalCCall em c = do
     cProg <- compileC (compiler em) (cStub c)
     cmmProg <- compileCmm (compiler em) (cCallCmm c)
-    res <- runTestProgram em wordSize (cProg <> cmmProg)
+    res <- runTestProgram em (retWidth c) (cProg <> cmmProg)
     return $ case res of
                ProcessSucceeded out _ ->
                    let saw :: [Integer]
@@ -121,14 +121,13 @@ cCallCmm c = unlines
     [ "test("++cmmWordType ++" buffer) {"
     , "  "++cmmType (retWidth c)++" ret;"
     , "  (" ++ retHint ++ "ret) = foreign \"C\" test_c(" ++ argList ++ ");"
-    , "  return ("++widenOp++"(ret));"
+    , "  return (ret);"
     , "}"
     ]
   where
     retHint = case callRetSignedness c of
                 Signed   -> "\"signed\" "
                 Unsigned -> ""
-    widenOp = "%zx" ++ show (widthBits wordSize)
     argList =
         commaList
         [ exprToCmm (ELit e) ++ hint
