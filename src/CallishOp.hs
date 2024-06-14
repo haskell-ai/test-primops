@@ -26,7 +26,8 @@ import Expr
 
 prop_callish_ops_correct :: EvalMethod -> TestTree
 prop_callish_ops_correct em = testGroup "callish ops"
-    [ testCallishOp "popcnt" (\(_ :: Proxy w) -> toProp $ popcnt @w)
+    [ testCallishOpNoW8 "bswap"  (\(_ :: Proxy w) -> toProp $ bswap @w)
+    , testCallishOp "popcnt" (\(_ :: Proxy w) -> toProp $ popcnt @w)
     , testCallishOp "pdep"   (\(_ :: Proxy w) -> toProp $ pdep @w)
     , testCallishOp "pext"   (\(_ :: Proxy w) -> toProp $ pext @w)
     ]
@@ -36,13 +37,20 @@ prop_callish_ops_correct em = testGroup "callish ops"
            -> Property
     toProp op = property $ prop_callish_correct em op
 
-    testCallishOp
+    testCallishOp, testCallishOpNoW8
         :: String
         -> (forall w. (KnownWidth w) => Proxy w -> Property)
         -> TestTree
     testCallishOp nm f = testGroup nm
         [ testProperty (show (knownWidth @w)) (f @w Proxy)
         | SomeWidth (_ :: Proxy w) <- allWidths
+        ]
+    testCallishOpNoW8 nm f = testGroup nm
+        [ testProperty (show (knownWidth @w)) (f @w Proxy)
+        | SomeWidth (_ :: Proxy w) <-
+            [SomeWidth (Proxy @W16),
+             SomeWidth (Proxy @W32),
+             SomeWidth (Proxy @W64)]
         ]
 
 popcnt :: forall w. (KnownWidth w) => CallishOp (Expr w) WordSize
@@ -82,6 +90,19 @@ pext = CallishOp
         [ b | (True, b) <- zip (exprBits mask) (exprBits x) ]
       where
         exprBits = toBits . interpret
+
+-- | Arguments are @(source, mask)@.
+bswap :: forall w. (KnownWidth w) => CallishOp (Expr w) w
+bswap = CallishOp
+    { name = "%bswap" ++ show (widthBits (knownWidth @w))
+    , refImpl = ref . interpret
+    }
+  where
+    ref :: Number w -> Number w
+    ref = fromBytes . reverse . toBytes
+      where
+        toBytes = chunk 8 . toBits
+        fromBytes = fromUnsigned . fromBits . concat
 
 toBits :: forall w. (KnownWidth w) => Number w -> [Bool]
 toBits x =
@@ -138,3 +159,11 @@ evalCallishOpCmm op args = unlines
   where
     argList = parens $ commaList [exprToCmm e | SomeExpr e <- getArgs args]
     width = knownWidth @width
+
+-- General Utils ---------------------------------------------------------------
+
+-- 'chunk' a list, from sbv
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk i xs = let (f, r) = splitAt i xs in f : chunk i r
+
