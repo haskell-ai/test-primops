@@ -145,11 +145,11 @@ instance KnownWidth width => Arbitrary (Expr width) where
     arbitrary = genExpr
     shrink e = shrinkExpr e
 
-genExpr :: forall width. (KnownWidth width) 
+genExpr :: forall width. (KnownWidth width)
         => Gen (Expr width)
 genExpr = genExpr' (Proxy @width)
 
-genExpr' :: forall width. (KnownWidth width) 
+genExpr' :: forall width. (KnownWidth width)
          => Proxy width -> Gen (Expr width)
 genExpr' _width = sized gen
   where
@@ -185,7 +185,8 @@ genExpr' _width = sized gen
 
     loadGen :: Gen (Expr width)
     loadGen = do
-        off <- chooseNumber (0, fromIntegral bufferSize-1)
+        let !bytes_read = fromIntegral (widthBytes (knownWidth @width))
+        off <- chooseNumber (0, fromIntegral bufferSize-bytes_read)
         return $ ELoad $ ELit off
 
     arithmeticGens :: [Gen (Expr width)]
@@ -372,7 +373,7 @@ endianness = LittleEndian
 load :: forall width. (KnownWidth width)
      => Natural -> Number width
 load off
-  | not (validOffset off) = error $ "invalid offset " <> show off
+  | not (validOffset off (knownWidth @width)) = error $ "invalid offset " <> show off
   | otherwise             =
       let xs = BS.unpack $ BS.take (w `div` 8) $ BS.drop (fromIntegral off) buffer
           w = widthBits (knownWidth @width)

@@ -9,6 +9,7 @@ module Width
     , WordSize
     , wordSize
     , widthBits
+    , widthBytes
     , KnownWidth
     , knownWidth
     , forAllWidths
@@ -55,6 +56,9 @@ widthBits W8  = 8
 widthBits W16 = 16
 widthBits W32 = 32
 widthBits W64 = 64
+
+widthBytes :: Width -> Int
+widthBytes x = (widthBits x) `div` 8
 
 class KnownWidth (width :: Width) where
     knownWidth :: Width

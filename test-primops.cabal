@@ -62,10 +62,10 @@ library
         RankNTypes
         ScopedTypeVariables
         TypeApplications
-        TypeInType
+        DataKinds
         TypeOperators
         ViewPatterns
-    default-language: Haskell2010
+    default-language: GHC2021
 
 executable test-primops
     import:           warnings
@@ -81,5 +81,5 @@ executable test-primops
                       test-primops
     build-tool-depends: run-it:run-it
     ghc-options:      -threaded
-    default-language: Haskell2010
+    default-language: GHC2021
 
