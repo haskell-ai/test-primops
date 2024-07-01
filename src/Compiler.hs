@@ -50,8 +50,10 @@ compile comp workDir srcs out args = do
     inTmp c = c { cwd = Just workDir }
     runProcess' p = do
         (_, _, _, hdl) <- createProcess p
-        ExitSuccess <- waitForProcess hdl
-        return ()
+        compilation_exit <- waitForProcess hdl
+        case compilation_exit of
+          ExitSuccess -> return ()
+          ExitFailure ecode -> error $ "Compilation error: Exit code(" ++ show ecode ++ ")"
 
 compileHs :: Compiler -> String -> IO TestProgram
 compileHs = compileOne "hs"
@@ -65,7 +67,14 @@ compileC = compileOne "c"
 compileOne :: String -> Compiler -> String -> IO TestProgram
 compileOne ext comp contents = withTempDirectory "." "tmp" $ \tmpDir -> do
     writeFile (tmpDir </> srcName) contents
-    compile comp tmpDir [srcName] objName ["-c"]
+    let compiler_args = ["-c"
+                        , "-fPIC" -- Ensure relocations work out since we use the dyn way.
+                        ]
+
+                        -- These are pretty agressive, as they cause failures due to
+                        -- overly long literals. So don't use these for now.
+                        -- ++ ["-opta -Xassembler", "-opta --fatal-warnings", "-Wall", "-Werror"]
+    compile comp tmpDir [srcName] objName compiler_args
     obj <- BS.readFile (tmpDir </> objName)
     return (TestProgram [obj])
   where
