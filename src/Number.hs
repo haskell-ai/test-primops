@@ -13,6 +13,7 @@ module Number
     , fromUnsigned
     , fromUnsignedC
     , chooseNumber
+    , signedMinBound
     , n8, n16, n32, n64
     , ones
     , truncateNumber
@@ -155,6 +156,9 @@ instance (KnownWidth width) => Enum (Number width) where
 instance (KnownWidth width) => Bounded (Number width) where
     minBound = Number 0
     maxBound = Number ((1 `shiftL` widthBits (knownWidth @width)) - 1)
+
+signedMinBound :: forall width. (KnownWidth width) => Number width
+signedMinBound = fromIntegral (toUnsigned (maxBound :: Number width) `div` 2 + 1)
 
 instance (KnownWidth width) => Arbitrary (Number width) where
     arbitrary = chooseNumber (minBound, maxBound)

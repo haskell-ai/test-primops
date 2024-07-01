@@ -237,21 +237,29 @@ genExpr' _width = sized gen
         ELit <$> chooseNumber (0, fromIntegral $ widthBits (knownWidth @width) - 1)
     subexpr2 = scale (`div` 2) genExpr
     binOp f = f <$> subexpr2 <*> subexpr2
+
+    -- These are a bit more involved to avoid undefined behaviour in the primops.
+    -- divisions where the result overflows the expression width
+    -- (e.g. (-128::W8) / (-1::W8)) are undefined.
+    -- See test-primops#1.
     quotOp = do
         signedness <- arbitrary
         num <- subexpr2
         let num' = interpret num
-            -- divisions where the result overflows the expression width
-            -- (e.g. (-128::W8) / (-1::W8)) are undefined.
-            -- See test-primops#1.
-            okay_denom denom
-              | Signed <- signedness =
-                  num' /= maxBound || interpret denom /= maxBound
-              | otherwise = True
-        denom <- suchThat (nonzero subexpr2) okay_denom
+        denom <- suchThat (nonzero subexpr2) (without_signed_div_overflow num')
         return $ EQuot signedness num denom
-    remOp = ERem <$> arbitrary <*> subexpr2 <*> nonzero subexpr2
+    remOp = do
+      signedness <- arbitrary
+      num <- subexpr2
+      let num' = interpret num
+      denom <- suchThat (nonzero subexpr2) (without_signed_div_overflow num')
+      return $ ERem signedness num denom
     nonzero = flip suchThat $ \x -> interpret x /= 0
+    without_signed_div_overflow :: forall w. KnownWidth w => Number w -> Expr w -> Bool
+    without_signed_div_overflow x y =
+      let y' = interpret y
+      in not (x == signedMinBound &&
+              y' == (-1 :: Number w))
 
 shrinkExpr :: forall width. (KnownWidth width)
            => Expr width -> [Expr width]
@@ -345,25 +353,29 @@ interpretRelOp op =
 
 interpret :: forall width. (KnownWidth width)
           => Expr width -> Number width
-interpret (ERel o a b) = boolVal $ interpretRelOp o (interpret a) (interpret b)
-interpret (EAdd a b)   = interpret a + interpret b
-interpret (ESub a b)   = interpret a - interpret b
-interpret (EMul a b)   = interpret a * interpret b
-interpret (EQuot s a b) = quotNumber s (interpret a) (interpret b)
-interpret (ERem s a b) = remNumber s (interpret a) (interpret b)
-interpret (EAnd a b)   = interpret a .&. interpret b
-interpret (EOr  a b)   = interpret a .|. interpret b
-interpret (EXOr a b)   = interpret a `xor` interpret b
-interpret (EShl a b)   = interpret a `shiftL` fromIntegral (toUnsigned $ interpret b)
-interpret (EShrl a b)  = interpret a `shiftRl` fromIntegral (toUnsigned $ interpret b)
-interpret (EShra a b)  = interpret a `shiftRa` fromIntegral (toUnsigned $ interpret b)
-interpret (ENot a)     = complement (interpret a)
-interpret (ENegate a)  = negate (interpret a)
-interpret (ENarrow a)  = truncateNumber (interpret a)
-interpret (ESignExt a) = signExtNumber (interpret a)
-interpret (EZeroExt a) = zeroExtNumber (interpret a)
-interpret (ELoad off)  = load $ toUnsigned $ interpret off
-interpret (ELit n)     = n
+interpret = interpretExpr
+
+interpretExpr :: forall width. (KnownWidth width)
+              => Expr width -> Number width
+interpretExpr (ERel o a b) = boolVal $ interpretRelOp o (interpretExpr a) (interpretExpr b)
+interpretExpr (EAdd a b)   = interpretExpr a + interpretExpr b
+interpretExpr (ESub a b)   = interpretExpr a - interpretExpr b
+interpretExpr (EMul a b)   = interpretExpr a * interpretExpr b
+interpretExpr (EQuot s a b) = quotNumber s (interpretExpr a) (interpretExpr b)
+interpretExpr (ERem s a b) = remNumber s (interpretExpr a) (interpretExpr b)
+interpretExpr (EAnd a b)   = interpretExpr a .&. interpretExpr b
+interpretExpr (EOr  a b)   = interpretExpr a .|. interpretExpr b
+interpretExpr (EXOr a b)   = interpretExpr a `xor` interpretExpr b
+interpretExpr (EShl a b)   = interpretExpr a `shiftL` fromIntegral (toUnsigned $ interpretExpr b)
+interpretExpr (EShrl a b)  = interpretExpr a `shiftRl` fromIntegral (toUnsigned $ interpretExpr b)
+interpretExpr (EShra a b)  = interpretExpr a `shiftRa` fromIntegral (toUnsigned $ interpretExpr b)
+interpretExpr (ENot a)     = complement (interpretExpr a)
+interpretExpr (ENegate a)  = negate (interpretExpr a)
+interpretExpr (ENarrow a)  = truncateNumber (interpretExpr a)
+interpretExpr (ESignExt a) = signExtNumber (interpretExpr a)
+interpretExpr (EZeroExt a) = zeroExtNumber (interpretExpr a)
+interpretExpr (ELoad off)  = load $ toUnsigned $ interpret off
+interpretExpr (ELit n)     = n
 
 data Endianness = LittleEndian | BigEndian
 
