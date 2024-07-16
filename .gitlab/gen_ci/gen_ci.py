@@ -112,7 +112,7 @@ def mk_new_yaml(job_map, job_mapping, pipeline_type, version):
         return job
 
 
-    platforms = [debian("x86_64", 10), debian("aarch64", 10), darwin("aarch64"), darwin("x86_64")]
+    platforms = [debian("x86_64", 12), debian("aarch64", 12), darwin("aarch64"), darwin("x86_64")]
     result = {}
     for platform in platforms:
         result.update(mk(platform))

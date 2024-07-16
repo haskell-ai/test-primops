@@ -1,17 +1,17 @@
 variables:
-  DOCKER_REV: "a9c0f5efbe503c17f63070583b2d815e498acc68"
+  DOCKER_REV: "486541129a8e7bf77c2cf7cd76ca998f690d5685"
   BINDIST_REF: "master"
 
 .build:
   script:
     - .gitlab/ci.sh
 
-.build-x86_64-linux-deb10:
+.build-x86_64-linux-deb12:
   extends: .build
   variables:
     NO_LLVM: 1
     GHC_ARGS: -fPIC
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb12:$DOCKER_REV"
   tags:
     - x86_64-linux
 
@@ -38,10 +38,10 @@ variables:
   tags:
     - aarch64-darwin
 
-.build-aarch64-linux-deb10:
+.build-aarch64-linux-deb12:
   extends: .build
   variables:
     NO_LLVM: 1
-  image: "registry.gitlab.haskell.org/ghc/ci-images/aarch64-linux-deb10:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/aarch64-linux-deb12:$DOCKER_REV"
   tags:
     - aarch64-linux
