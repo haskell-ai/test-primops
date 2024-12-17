@@ -11,8 +11,8 @@ synopsis:
 executable run-it
     main-is:          Run.hs
     cmm-sources:      Trampoline.cmm
-    -- silly Cabal doesn't link cmm-sources into executables
-    ghc-options:      Trampoline.cmm
+    -- N.B. older silly Cabal doesn't link cmm-sources into executables
+    -- ghc-options:      Trampoline.cmm
     build-depends:    base,
                       unix,
                       mmap
