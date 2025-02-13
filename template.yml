@@ -1,5 +1,6 @@
 variables:
-  DOCKER_REV: "486541129a8e7bf77c2cf7cd76ca998f690d5685"
+  # This should generally follow DOCKER_REV in ghc/.gitlab-ci-yml.
+  DOCKER_REV: "f2d12519f45a13a61fcca03a949f927ceead6492"
   BINDIST_REF: "master"
 
 .build:
