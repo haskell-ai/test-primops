@@ -220,8 +220,7 @@ genExpr' _width = sized gen
           -- [0, SHIFTEE_SIZE). See ghc#20637.
           EShl <$> arbitrary <*> arbitraryShift
         , EShrl <$> arbitrary <*> arbitraryShift
-          -- See https://gitlab.haskell.org/ghc/ghc/-/issues/20626
-        --, EShra <$> arbitrary <*> arbitraryShift
+        , EShra <$> arbitrary <*> arbitraryShift
         ]
 
     relationalGens :: [Gen (Expr width)]
