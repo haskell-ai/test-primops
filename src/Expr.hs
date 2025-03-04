@@ -245,12 +245,16 @@ genExpr' _width = sized gen
     quotOp = do
         signedness <- arbitrary
         num <- subexpr2
-        denom <- suchThat (nonzero subexpr2) (not . signedDivOverflows num)
+        denom <- case signedness of
+                   Unsigned -> nonzero subexpr2
+                   Signed   -> suchThat (nonzero subexpr2) (not . signedDivOverflows num)
         return $ EQuot signedness num denom
     remOp = do
       signedness <- arbitrary
       num <- subexpr2
-      denom <- suchThat (nonzero subexpr2) (not . signedDivOverflows num)
+      denom <- case signedness of
+                 Unsigned -> nonzero subexpr2
+                 Signed   -> suchThat (nonzero subexpr2) (not . signedDivOverflows num)
       return $ ERem signedness num denom
     nonzero = flip suchThat $ \x -> interpret x /= 0
 
