@@ -55,5 +55,11 @@ if [ ! -z ${GHC_ARGS+x} ]; then
   ARGS+=("--ghc-args" "$GHC_ARGS")
 fi
 
-./run.sh run "${ARGS[@]}"
+if [ ! -z ${QUICKCHECK_TESTS+x} ]; then
+  ARGS+=("--quickcheck-tests" "$QUICKCHECK_TESTS")
+fi
+
+# See Note [Tests of test-primops] in app/Main.hs
+./run.sh run "${ARGS[@]}" -p '$0 == "test primops/expression correctness"' --quickcheck-tests=$EXPR_TESTS
+./run.sh run "${ARGS[@]}" -p '$0 != "test primops/expression correctness"' --quickcheck-tests=$OTHER_TESTS
 

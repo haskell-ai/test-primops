@@ -1,6 +1,12 @@
 variables:
   GIT_STRATEGY: clone
 
+  # We run the expression correctness tests significantly more iterations
+  # since they cover a much larger phase space.
+  # See Note [Tests of test-primops] in app/Main.hs
+  EXPR_TESTS: 10000
+  OTHER_TESTS: 100
+
 include: template.yml
 
 
