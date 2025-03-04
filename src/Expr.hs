@@ -6,6 +6,8 @@ module Expr
     , relationalOpString
       -- * Expressoins
     , Expr(..), SomeExpr(..)
+      -- ** Definedness
+    , isDefined
       -- ** Convenient helpers
     , l8, l16, l32, l64
     , extendToWord
@@ -114,6 +116,24 @@ instance KnownWidth width => Num (Expr width) where
     negate = ENegate
     abs = id
     fromInteger = ELit . fromInteger
+
+-- | Does a Cmm expression have a defined result?
+isDefined :: forall width. KnownWidth width => Expr width -> Bool
+isDefined expr =
+    case expr of
+      ELoad (ELit off) -> off > 0 && off < fromIntegral bufferSize
+      EShl _ s -> let s' = interpret s
+                  in s' >= 0 && s' < fromIntegral width
+      EShrl _ s -> let s' = interpret s
+                   in s' >= 0 && s' < fromIntegral width
+      ENegate x | interpret x == signedMinBound -> False
+      EQuot _ _ y | 0 <- interpret y -> False
+      ERem  _ _ y | 0 <- interpret y -> False
+      EQuot Signed x y -> not $ signedDivOverflows x y
+      ERem  Signed x y -> not $ signedDivOverflows x y
+      _ -> True
+  where
+    width = widthBits (knownWidth @width)
 
 l8 :: Natural -> Expr W8
 l8 = ELit . n8
