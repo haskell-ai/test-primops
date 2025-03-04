@@ -112,7 +112,6 @@ runCompilerTests =
 
 main :: IO ()
 main = do
-    createBufferFile
     let opts = [ Option (Proxy @GhcPath)
                , Option (Proxy @GhcArgs)
                , Option (Proxy @RunItPath)

@@ -16,7 +16,6 @@ module RunGhc
       -- * Utilities
     , dumpCmmAsm
     , dumpExprAsm
-    , createBufferFile
     ) where
 
 import Control.Exception
@@ -87,6 +86,8 @@ runTestProgramDyn :: Compiler -> FilePath
                   -> IO ProcessResult
 runTestProgramDyn comp runItPath width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
+        let bufferFile = tmpDir </> "buffer"
+        createBufferFile bufferFile
         objs <- writeObjectsIn tmpDir tp
         compile comp tmpDir objs soName args
         readProcess' runItPath [bufferFile, show (widthBits width), tmpDir </> soName] ""
@@ -100,25 +101,25 @@ runTestProgramStatic :: Compiler
                      -> IO ProcessResult
 runTestProgramStatic comp runExe width tp =
     withTempDirectory "." "tmp" $ \tmpDir -> do
-        wrapper <- mkStaticWrapper comp width
+        let bufferFile = tmpDir </> "buffer"
+        createBufferFile bufferFile
+        wrapper <- mkStaticWrapper comp width bufferFile
         objs <- writeObjectsIn tmpDir (tp <> wrapper)
         compile comp tmpDir objs exeName ["-package", "bytestring"]
         runExe (tmpDir </> exeName)
   where
     exeName = "Test"
 
-bufferFile :: FilePath
-bufferFile = "test"
-
-createBufferFile :: IO ()
-createBufferFile = do
-    BS.writeFile bufferFile buffer
+createBufferFile :: FilePath -> IO ()
+createBufferFile fname = do
+    BS.writeFile fname buffer
 
 mkStaticWrapper
     :: Compiler
     -> Width
+    -> FilePath
     -> IO TestProgram
-mkStaticWrapper comp width = do
+mkStaticWrapper comp width bufferFile = do
     compileHs comp src
   where
     src = unlines
