@@ -245,21 +245,19 @@ genExpr' _width = sized gen
     quotOp = do
         signedness <- arbitrary
         num <- subexpr2
-        let num' = interpret num
-        denom <- suchThat (nonzero subexpr2) (without_signed_div_overflow num')
+        denom <- suchThat (nonzero subexpr2) (not . signedDivOverflows num)
         return $ EQuot signedness num denom
     remOp = do
       signedness <- arbitrary
       num <- subexpr2
-      let num' = interpret num
-      denom <- suchThat (nonzero subexpr2) (without_signed_div_overflow num')
+      denom <- suchThat (nonzero subexpr2) (not . signedDivOverflows num)
       return $ ERem signedness num denom
     nonzero = flip suchThat $ \x -> interpret x /= 0
-    without_signed_div_overflow :: forall w. KnownWidth w => Number w -> Expr w -> Bool
-    without_signed_div_overflow x y =
-      let y' = interpret y
-      in not (x == signedMinBound &&
-              y' == (-1 :: Number w))
+
+-- | Does @x /signed y@ overflow the given width?
+signedDivOverflows :: forall w. KnownWidth w => Expr w -> Expr w -> Bool
+signedDivOverflows x y =
+    interpret x == signedMinBound && interpret y == (-1 :: Number w)
 
 shrinkExpr :: forall width. (KnownWidth width)
            => Expr width -> [Expr width]
@@ -302,6 +300,7 @@ shrinkExpr e =
         [ op a' b'
         | (a', b') <- shrink (a, b)
         , interpret b' /= 0
+        , not $ signedDivOverflows a' b'
         ]
 
 -- * SomeExpr
