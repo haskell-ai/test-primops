@@ -110,6 +110,26 @@ runCompilerTests :: Compiler -> IO ()
 runCompilerTests =
     defaultMain . testGroup "compiler" . compilerTests  . staticEvalMethod
 
+-- Note [Tests of test-primops]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- test-primops contains several classes of tests:
+--
+--  * the `expression correctness` test is the main act. It generates
+--    arbitrary Cmm expressions, compiles and runs them, and checks the
+--    result against a reference implementation.
+--  * the callish ops correctness test tests callish primops (which
+--    the expression correctness test cannot test since applications
+--    of such ops are not expressions). Note that this
+--    only tests ops which produce a single result.
+--  * the `C-Call correctness` tests the correctness of the foreign calls
+--    via the C calling convention.
+--  * the `quot-rem invariant` tests the consistency between the quot and rem
+--    operations.
+--  * The mul_may_oflo test verifies the correctness of the the MulMayOflo
+--    callish op which is not covered by the callish op correctness` test
+--    as it returns two results.
+--
+
 main :: IO ()
 main = do
     let opts = [ Option (Proxy @GhcPath)
