@@ -1,4 +1,9 @@
 packages: ., ./run-it
 
+optimization: False
+
+program-options
+  ghc-options: -haddock -Winvalid-haddock -Werror -Wwarn=simplifiable-class-constraints -Wwarn=unused-imports -Wwarn=x-partial
+
 package run-it
   executable-dynamic: True
